@@ -1,4 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## YelloBricks
+
+YelloBricks is a Lego-inspired web app that takes the sets you own and suggests what else you can build.
+
+### Key features
+- **Garage**: add sets manually or import from Brickset/BrickLink CSV
+- **Smart Mix**: suggests **official sets** you can build (or almost build) from a mixture of your selected sets
+- **Intent search**: “I want to build a forklift/horse/castle” filters candidate sets
+- **Pre-beta gate**: blocks access until email signup; forwards signups into your Google Sheet
+- **3D viewer**: drag and drop `.ldr`/`.mpd` files to preview in 3D
+
+## Setup
+
+### 1) Install
+
+```bash
+cd /home/fd/Cursor/Lego Inspiration/brickmixer
+npm install
+```
+
+### 2) Environment
+
+Create `/home/fd/Cursor/Lego Inspiration/brickmixer/.env.local`:
+
+```bash
+REBRICKABLE_API_KEY="YOUR_REBRICKABLE_KEY"
+PREBETA_APPS_SCRIPT_WEBHOOK_URL="YOUR_APPS_SCRIPT_WEBAPP_EXEC_URL"
+NEXT_PUBLIC_PREBETA_GATE_DISABLED=false
+```
+
+Apps Script setup docs: `docs/google-sheets-prebeta.md`
+
+### 3) Run
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+## Deploy (Vercel)
+
+1. Push to GitHub (`xala-ai/yello`).
+2. Import into Vercel.
+3. Add env vars in Vercel:
+   - `REBRICKABLE_API_KEY`
+   - `PREBETA_APPS_SCRIPT_WEBHOOK_URL`
+   - `NEXT_PUBLIC_PREBETA_GATE_DISABLED` (set to `false`)
 
 ## Getting Started
 
