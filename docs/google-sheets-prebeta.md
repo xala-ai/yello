@@ -1,7 +1,7 @@
 ## Google Sheets hookup for YelloBricks pre-beta gate
 
 Goal: when a user enters an email in the in-app pre-beta overlay, append it to your Google Sheet:
-`https://docs.google.com/spreadsheets/d/1q34f9DWJs4l_q3i-1V1tDRrMDDf7FqOVSxgp7JWJaio/edit?usp=sharing`
+`https://docs.google.com/spreadsheets/d/<SHEET_ID>/edit?usp=sharing`
 
 ### Why we need an Apps Script web app
 Google Sheets “anyone with the link can edit” does not automatically allow server-side API writes without OAuth credentials.
@@ -24,7 +24,7 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    var ss = SpreadsheetApp.openById('1q34f9DWJs4l_q3i-1V1tDRrMDDf7FqOVSxgp7JWJaio');
+    var ss = SpreadsheetApp.openById('<SHEET_ID>');
     var sheet = ss.getSheets()[0];
     sheet.appendRow([new Date(), email, body.userAgent || '']);
 
