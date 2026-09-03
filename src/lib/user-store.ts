@@ -2,6 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import bcryptjs from 'bcryptjs';
 import crypto from 'crypto';
+import type { LegoSet } from '@/types/rebrickable';
+
+export interface GarageSnapshot {
+  sets?: LegoSet[];
+  selectedSetIds?: string[];
+  age?: number;
+  fidelityWeight?: number;
+}
 
 export interface User {
   id: string;
@@ -12,7 +20,7 @@ export interface User {
   role: 'adult' | 'child';
   age?: number;
   createdAt: string;
-  garage?: any;
+  garage?: GarageSnapshot;
 }
 
 const FIVE_LETTER_WORDS: string[] = [
@@ -123,13 +131,13 @@ export function generateKidPassphrase(): { words: [string, string]; display: str
   };
 }
 
-export async function getUserGarage(userId: string): Promise<any | null> {
+export async function getUserGarage(userId: string): Promise<GarageSnapshot | null> {
   const user = await findUserById(userId);
   if (!user) return null;
   return user.garage || null;
 }
 
-export async function saveUserGarage(userId: string, garageJson: any): Promise<boolean> {
+export async function saveUserGarage(userId: string, garageJson: GarageSnapshot): Promise<boolean> {
   const result = await updateUser(userId, { garage: garageJson });
   return result !== null;
 }

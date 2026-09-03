@@ -9,6 +9,7 @@ import {
   hashPassphrase,
   getUserGarage,
   saveUserGarage,
+  type GarageSnapshot,
 } from '@/lib/user-store';
 
 export async function registerEmailAction(email: string, password: string, name?: string, age?: number) {
@@ -39,7 +40,7 @@ export async function registerKidAction(name?: string, age?: number) {
   return { id: user.id, passphrase: display, name: user.name };
 }
 
-export async function syncGarageUpAction(garageJson: unknown) {
+export async function syncGarageUpAction(garageJson: GarageSnapshot) {
   const session = await auth();
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!userId) throw new Error('Not signed in');

@@ -7,6 +7,7 @@ export interface MocFile {
 
 // Add to actions.ts
 export async function getMocFilesAction(setNum: string): Promise<MocFile[]> {
+    void setNum;
     // This endpoint usually requires a user token, not just an API key.
     // But for some free MOCs it might work or we might need to scrape.
     // Let's try the standard endpoint first.

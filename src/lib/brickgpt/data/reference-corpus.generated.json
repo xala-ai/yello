@@ -1,0 +1,1849 @@
+{
+  "schemaVersion": 1,
+  "corpusVersion": 1,
+  "generatedBy": "tools/brick-corpus/compile.mjs",
+  "generation": {
+    "deterministic": true,
+    "networkAccessRequired": false,
+    "occupancyGridExtent": 12
+  },
+  "rightsPolicy": {
+    "acceptedLicenses": [
+      "CCAL-2.0",
+      "CC0-1.0"
+    ],
+    "excludedSources": [
+      "public/ldraw/samples/car.ldr_Packed.mpd (no model-level license declaration)"
+    ],
+    "prohibitedInputs": [
+      "Rebrickable MOCs",
+      "StableText2Brick",
+      "unlicensed MOCs"
+    ]
+  },
+  "checks": {
+    "metadataValidatedFromSourceHeaders": true,
+    "sourceHashesRecorded": true,
+    "nearDuplicates": {
+      "pairsChecked": 36,
+      "maximumSimilarity": 0.2778,
+      "rejectionThreshold": 0.92,
+      "passed": true
+    }
+  },
+  "entries": [
+    {
+      "id": "ldraw-lighthouse-30023",
+      "kind": "licensed-reference",
+      "title": "Lighthouse",
+      "semantic": {
+        "tags": [
+          "architecture",
+          "coastal",
+          "lighthouse",
+          "tower"
+        ],
+        "features": [
+          "roof-cap",
+          "rotational-symmetry",
+          "tall-profile",
+          "tiered-body"
+        ],
+        "proportions": {
+          "width": 0.25,
+          "height": 1,
+          "depth": 0.3333
+        }
+      },
+      "occupancy": {
+        "gridConvention": "integer cells; x=width, y=height, z=depth; longest source span maps to 12 cells",
+        "cells": [
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            1,
+            0,
+            2
+          ],
+          [
+            1,
+            1,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            4
+          ],
+          [
+            1,
+            2,
+            2
+          ],
+          [
+            1,
+            3,
+            2
+          ],
+          [
+            1,
+            3,
+            3
+          ],
+          [
+            1,
+            4,
+            2
+          ],
+          [
+            1,
+            6,
+            2
+          ],
+          [
+            1,
+            6,
+            3
+          ],
+          [
+            1,
+            7,
+            1
+          ],
+          [
+            1,
+            7,
+            2
+          ],
+          [
+            1,
+            7,
+            4
+          ],
+          [
+            1,
+            8,
+            2
+          ],
+          [
+            1,
+            9,
+            2
+          ],
+          [
+            1,
+            10,
+            2
+          ],
+          [
+            1,
+            11,
+            2
+          ],
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            3,
+            2
+          ],
+          [
+            2,
+            3,
+            3
+          ],
+          [
+            2,
+            6,
+            2
+          ],
+          [
+            2,
+            6,
+            3
+          ],
+          [
+            3,
+            1,
+            2
+          ]
+        ],
+        "cellCount": 24,
+        "sourcePartPlacementCount": 25
+      },
+      "provenance": {
+        "sourceCollection": "LDraw",
+        "sourcePath": "public/ldraw/samples/30023-1-Lighthouse.ldr_Packed.mpd",
+        "sourceUrl": "https://library.ldraw.org/",
+        "modelName": "30023 - Lighthouse.ldr",
+        "author": "Merlijn Wissink [legolijntje]",
+        "sourceSha256": "800633a7bdbe54f6e4161ab594a7351b99c53c1c2b5af797b6fa59517e4d36a7",
+        "derivation": "Color-independent 12-cell occupancy sampled from recursively resolved LDraw part origins"
+      },
+      "license": {
+        "id": "CCAL-2.0",
+        "declaration": "Redistributable under CCAL version 2.0 : see CAreadme.txt",
+        "attributionRequired": true,
+        "url": "https://www.ldraw.org/article/227.html"
+      },
+      "fingerprints": {
+        "occupancySha256": "efead1aad877ecc32202accc2141dedfc0cdaad5f2e972773a8b8d27ff270178",
+        "rotationMirrorInvariantSha256": "c2a53305cc996e3f84867f00f60cb8feab94c15a4b728bf8e1c6253678b8ca8a"
+      },
+      "nearDuplicateCheck": {
+        "method": "maximum Jaccard similarity across horizontal rotations and mirrors",
+        "rejectionThreshold": 0.92,
+        "nearestEntryId": "motif-wheel-pair-chassis",
+        "nearestSimilarity": 0.1176,
+        "passed": true
+      }
+    },
+    {
+      "id": "ldraw-lunar-mpv-1621",
+      "kind": "licensed-reference",
+      "title": "Lunar MPV Vehicle",
+      "semantic": {
+        "tags": [
+          "rover",
+          "space",
+          "utility",
+          "vehicle"
+        ],
+        "features": [
+          "bilateral-symmetry",
+          "cab",
+          "cargo-section",
+          "wheels"
+        ],
+        "proportions": {
+          "width": 0.7717,
+          "height": 0.448,
+          "depth": 1
+        }
+      },
+      "occupancy": {
+        "gridConvention": "integer cells; x=width, y=height, z=depth; longest source span maps to 12 cells",
+        "cells": [
+          [
+            0,
+            1,
+            11
+          ],
+          [
+            1,
+            0,
+            11
+          ],
+          [
+            1,
+            1,
+            10
+          ],
+          [
+            1,
+            2,
+            10
+          ],
+          [
+            1,
+            2,
+            11
+          ],
+          [
+            2,
+            1,
+            10
+          ],
+          [
+            2,
+            2,
+            2
+          ],
+          [
+            2,
+            3,
+            0
+          ],
+          [
+            3,
+            0,
+            4
+          ],
+          [
+            3,
+            0,
+            8
+          ],
+          [
+            3,
+            1,
+            0
+          ],
+          [
+            3,
+            1,
+            1
+          ],
+          [
+            3,
+            2,
+            1
+          ],
+          [
+            3,
+            3,
+            1
+          ],
+          [
+            3,
+            4,
+            1
+          ],
+          [
+            3,
+            5,
+            1
+          ],
+          [
+            4,
+            0,
+            8
+          ],
+          [
+            4,
+            1,
+            2
+          ],
+          [
+            4,
+            1,
+            3
+          ],
+          [
+            4,
+            1,
+            4
+          ],
+          [
+            4,
+            1,
+            7
+          ],
+          [
+            4,
+            1,
+            8
+          ],
+          [
+            4,
+            2,
+            1
+          ],
+          [
+            4,
+            2,
+            4
+          ],
+          [
+            4,
+            3,
+            1
+          ],
+          [
+            4,
+            3,
+            3
+          ],
+          [
+            4,
+            3,
+            7
+          ],
+          [
+            4,
+            4,
+            0
+          ],
+          [
+            4,
+            4,
+            4
+          ],
+          [
+            5,
+            2,
+            4
+          ],
+          [
+            5,
+            2,
+            6
+          ],
+          [
+            5,
+            2,
+            7
+          ],
+          [
+            5,
+            2,
+            8
+          ],
+          [
+            5,
+            3,
+            4
+          ],
+          [
+            5,
+            3,
+            6
+          ],
+          [
+            5,
+            3,
+            11
+          ],
+          [
+            5,
+            4,
+            4
+          ],
+          [
+            5,
+            4,
+            6
+          ],
+          [
+            6,
+            1,
+            6
+          ],
+          [
+            6,
+            1,
+            7
+          ],
+          [
+            6,
+            1,
+            8
+          ],
+          [
+            6,
+            2,
+            6
+          ],
+          [
+            6,
+            2,
+            7
+          ],
+          [
+            6,
+            2,
+            8
+          ],
+          [
+            6,
+            2,
+            9
+          ],
+          [
+            6,
+            2,
+            10
+          ],
+          [
+            6,
+            3,
+            6
+          ],
+          [
+            6,
+            3,
+            7
+          ],
+          [
+            6,
+            3,
+            8
+          ],
+          [
+            6,
+            4,
+            4
+          ],
+          [
+            6,
+            4,
+            6
+          ],
+          [
+            6,
+            4,
+            7
+          ],
+          [
+            6,
+            4,
+            8
+          ],
+          [
+            7,
+            1,
+            3
+          ],
+          [
+            7,
+            1,
+            4
+          ],
+          [
+            7,
+            1,
+            7
+          ],
+          [
+            7,
+            1,
+            8
+          ],
+          [
+            7,
+            2,
+            4
+          ],
+          [
+            7,
+            2,
+            6
+          ],
+          [
+            7,
+            2,
+            7
+          ],
+          [
+            7,
+            2,
+            8
+          ],
+          [
+            7,
+            3,
+            3
+          ],
+          [
+            7,
+            3,
+            6
+          ],
+          [
+            7,
+            3,
+            11
+          ],
+          [
+            7,
+            5,
+            4
+          ],
+          [
+            8,
+            0,
+            3
+          ],
+          [
+            8,
+            0,
+            8
+          ]
+        ],
+        "cellCount": 67,
+        "sourcePartPlacementCount": 104
+      },
+      "provenance": {
+        "sourceCollection": "LDraw",
+        "sourcePath": "public/ldraw/samples/1621-1-LunarMPVVehicle.mpd_Packed.mpd",
+        "sourceUrl": "https://library.ldraw.org/",
+        "modelName": "1621 - Lunar MPV Vehicle.ldr",
+        "author": "Damien Roux [Darats]",
+        "sourceSha256": "7588ea4cdf8461721d05858ba839912768c197a29b9fe546ec63edf149ebf33e",
+        "derivation": "Color-independent 12-cell occupancy sampled from recursively resolved LDraw part origins"
+      },
+      "license": {
+        "id": "CCAL-2.0",
+        "declaration": "Redistributable under CCAL version 2.0 : see CAreadme.txt",
+        "attributionRequired": true,
+        "url": "https://www.ldraw.org/article/227.html"
+      },
+      "fingerprints": {
+        "occupancySha256": "1c8c7c78604761bfb2dc42035cd786452668a1274d69d214723a23b1500f84b9",
+        "rotationMirrorInvariantSha256": "e4380dbe7ccb1e182cc384c4f4dc57a3a1e515b417d94c7195dd83600aa345cf"
+      },
+      "nearDuplicateCheck": {
+        "method": "maximum Jaccard similarity across horizontal rotations and mirrors",
+        "rejectionThreshold": 0.92,
+        "nearestEntryId": "ldraw-x-wing-30051",
+        "nearestSimilarity": 0.1313,
+        "passed": true
+      }
+    },
+    {
+      "id": "ldraw-mini-vehicles-4838",
+      "kind": "licensed-reference",
+      "title": "Mini Vehicles - Carrier and Car",
+      "semantic": {
+        "tags": [
+          "car",
+          "carrier",
+          "truck",
+          "vehicle"
+        ],
+        "features": [
+          "bilateral-symmetry",
+          "cab",
+          "cargo-deck",
+          "wheels"
+        ],
+        "proportions": {
+          "width": 0.31,
+          "height": 0.48,
+          "depth": 1
+        }
+      },
+      "occupancy": {
+        "gridConvention": "integer cells; x=width, y=height, z=depth; longest source span maps to 12 cells",
+        "cells": [
+          [
+            0,
+            0,
+            3
+          ],
+          [
+            0,
+            0,
+            8
+          ],
+          [
+            0,
+            1,
+            1
+          ],
+          [
+            0,
+            1,
+            10
+          ],
+          [
+            0,
+            2,
+            1
+          ],
+          [
+            0,
+            2,
+            3
+          ],
+          [
+            0,
+            2,
+            11
+          ],
+          [
+            0,
+            3,
+            2
+          ],
+          [
+            0,
+            3,
+            4
+          ],
+          [
+            0,
+            3,
+            6
+          ],
+          [
+            0,
+            3,
+            9
+          ],
+          [
+            0,
+            4,
+            4
+          ],
+          [
+            0,
+            5,
+            4
+          ],
+          [
+            1,
+            0,
+            5
+          ],
+          [
+            1,
+            0,
+            6
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            5
+          ],
+          [
+            1,
+            2,
+            8
+          ],
+          [
+            1,
+            3,
+            5
+          ],
+          [
+            1,
+            4,
+            9
+          ],
+          [
+            1,
+            5,
+            3
+          ],
+          [
+            2,
+            0,
+            3
+          ],
+          [
+            2,
+            0,
+            5
+          ],
+          [
+            2,
+            0,
+            6
+          ],
+          [
+            2,
+            0,
+            8
+          ],
+          [
+            2,
+            0,
+            10
+          ],
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            1
+          ],
+          [
+            2,
+            1,
+            6
+          ],
+          [
+            2,
+            1,
+            10
+          ],
+          [
+            2,
+            2,
+            0
+          ],
+          [
+            2,
+            2,
+            2
+          ],
+          [
+            2,
+            2,
+            3
+          ],
+          [
+            2,
+            2,
+            4
+          ],
+          [
+            2,
+            2,
+            5
+          ],
+          [
+            2,
+            3,
+            2
+          ],
+          [
+            2,
+            3,
+            4
+          ],
+          [
+            2,
+            3,
+            5
+          ],
+          [
+            2,
+            3,
+            6
+          ],
+          [
+            2,
+            3,
+            9
+          ],
+          [
+            2,
+            4,
+            1
+          ],
+          [
+            2,
+            4,
+            3
+          ],
+          [
+            2,
+            4,
+            8
+          ],
+          [
+            2,
+            4,
+            9
+          ],
+          [
+            2,
+            5,
+            8
+          ],
+          [
+            3,
+            0,
+            3
+          ],
+          [
+            3,
+            0,
+            8
+          ],
+          [
+            3,
+            1,
+            1
+          ],
+          [
+            3,
+            1,
+            5
+          ],
+          [
+            3,
+            1,
+            10
+          ],
+          [
+            3,
+            2,
+            1
+          ],
+          [
+            3,
+            2,
+            3
+          ],
+          [
+            3,
+            2,
+            8
+          ],
+          [
+            3,
+            2,
+            11
+          ],
+          [
+            3,
+            3,
+            2
+          ],
+          [
+            3,
+            3,
+            4
+          ],
+          [
+            3,
+            3,
+            6
+          ],
+          [
+            3,
+            3,
+            9
+          ],
+          [
+            3,
+            4,
+            4
+          ],
+          [
+            3,
+            5,
+            3
+          ],
+          [
+            3,
+            5,
+            4
+          ]
+        ],
+        "cellCount": 61,
+        "sourcePartPlacementCount": 79
+      },
+      "provenance": {
+        "sourceCollection": "LDraw",
+        "sourcePath": "public/ldraw/samples/4838-1-MiniVehicles.mpd_Packed.mpd",
+        "sourceUrl": "https://library.ldraw.org/",
+        "modelName": "4838 - Mini Vehicles - Carrier and Car.mpd",
+        "author": "Ken Drew [Ken]",
+        "sourceSha256": "1b23de39dbbc518d4989cdb74693f7b5df058c642dedcb5c649d0ef6530e57e7",
+        "derivation": "Color-independent 12-cell occupancy sampled from recursively resolved LDraw part origins"
+      },
+      "license": {
+        "id": "CCAL-2.0",
+        "declaration": "Redistributable under CCAL version 2.0 : see CAreadme.txt",
+        "attributionRequired": true,
+        "url": "https://www.ldraw.org/article/227.html"
+      },
+      "fingerprints": {
+        "occupancySha256": "648f2ac9695f568719a883d996c1e2693d7b1d87d44848e61d4b9bd4d2a6adc7",
+        "rotationMirrorInvariantSha256": "ffaeb6a3960a30d1eb7cbc31d58c07171658958de93633a5875276ac6a1e99a2"
+      },
+      "nearDuplicateCheck": {
+        "method": "maximum Jaccard similarity across horizontal rotations and mirrors",
+        "rejectionThreshold": 0.92,
+        "nearestEntryId": "motif-wing-pair",
+        "nearestSimilarity": 0.0833,
+        "passed": true
+      }
+    },
+    {
+      "id": "ldraw-x-wing-30051",
+      "kind": "licensed-reference",
+      "title": "X-Wing Fighter",
+      "semantic": {
+        "tags": [
+          "aircraft",
+          "fighter",
+          "science-fiction",
+          "spacecraft"
+        ],
+        "features": [
+          "bilateral-symmetry",
+          "engines",
+          "nose",
+          "wings"
+        ],
+        "proportions": {
+          "width": 1,
+          "height": 0.467,
+          "depth": 0.9211
+        }
+      },
+      "occupancy": {
+        "gridConvention": "integer cells; x=width, y=height, z=depth; longest source span maps to 12 cells",
+        "cells": [
+          [
+            0,
+            0,
+            4
+          ],
+          [
+            0,
+            5,
+            4
+          ],
+          [
+            1,
+            0,
+            7
+          ],
+          [
+            1,
+            5,
+            7
+          ],
+          [
+            2,
+            1,
+            7
+          ],
+          [
+            2,
+            4,
+            7
+          ],
+          [
+            3,
+            5,
+            7
+          ],
+          [
+            4,
+            2,
+            4
+          ],
+          [
+            4,
+            2,
+            6
+          ],
+          [
+            4,
+            2,
+            9
+          ],
+          [
+            4,
+            2,
+            10
+          ],
+          [
+            4,
+            3,
+            4
+          ],
+          [
+            4,
+            3,
+            6
+          ],
+          [
+            4,
+            3,
+            9
+          ],
+          [
+            4,
+            3,
+            10
+          ],
+          [
+            5,
+            2,
+            7
+          ],
+          [
+            5,
+            3,
+            7
+          ],
+          [
+            6,
+            2,
+            0
+          ],
+          [
+            6,
+            2,
+            1
+          ],
+          [
+            6,
+            2,
+            3
+          ],
+          [
+            6,
+            2,
+            4
+          ],
+          [
+            6,
+            2,
+            7
+          ],
+          [
+            6,
+            3,
+            2
+          ],
+          [
+            6,
+            3,
+            4
+          ],
+          [
+            6,
+            3,
+            5
+          ],
+          [
+            6,
+            3,
+            7
+          ],
+          [
+            6,
+            3,
+            9
+          ],
+          [
+            6,
+            4,
+            5
+          ],
+          [
+            6,
+            4,
+            6
+          ],
+          [
+            6,
+            4,
+            7
+          ],
+          [
+            7,
+            2,
+            4
+          ],
+          [
+            7,
+            2,
+            6
+          ],
+          [
+            7,
+            2,
+            9
+          ],
+          [
+            7,
+            2,
+            10
+          ],
+          [
+            7,
+            3,
+            4
+          ],
+          [
+            7,
+            3,
+            6
+          ],
+          [
+            7,
+            3,
+            9
+          ],
+          [
+            7,
+            3,
+            10
+          ],
+          [
+            8,
+            5,
+            7
+          ],
+          [
+            9,
+            1,
+            7
+          ],
+          [
+            9,
+            4,
+            7
+          ],
+          [
+            10,
+            0,
+            7
+          ],
+          [
+            10,
+            5,
+            7
+          ],
+          [
+            11,
+            0,
+            4
+          ],
+          [
+            11,
+            5,
+            4
+          ]
+        ],
+        "cellCount": 45,
+        "sourcePartPlacementCount": 61
+      },
+      "provenance": {
+        "sourceCollection": "LDraw",
+        "sourcePath": "public/ldraw/samples/30051-1-X-wingFighter-Mini.mpd_Packed.mpd",
+        "sourceUrl": "https://library.ldraw.org/",
+        "modelName": "30051 - X-Wing Fighter.ldr",
+        "author": "Jude Parrill",
+        "sourceSha256": "9e75a1fc07be20c911010bc1f5ac54bd780290ce425959885daf59672ddae31e",
+        "derivation": "Color-independent 12-cell occupancy sampled from recursively resolved LDraw part origins"
+      },
+      "license": {
+        "id": "CCAL-2.0",
+        "declaration": "Redistributable under CCAL version 2.0 : see CAreadme.txt",
+        "attributionRequired": true,
+        "url": "https://www.ldraw.org/article/227.html"
+      },
+      "fingerprints": {
+        "occupancySha256": "a53b4f2c63f04c7cb3e0cd8c81a7b5c4f53601e3ff7dfddb567647a925b27f82",
+        "rotationMirrorInvariantSha256": "f9f92823acf54c8cb34cf3df0947e1d25b0b94909d899eb345a44eb059e59602"
+      },
+      "nearDuplicateCheck": {
+        "method": "maximum Jaccard similarity across horizontal rotations and mirrors",
+        "rejectionThreshold": 0.92,
+        "nearestEntryId": "ldraw-lunar-mpv-1621",
+        "nearestSimilarity": 0.1313,
+        "passed": true
+      }
+    },
+    {
+      "id": "motif-arched-opening",
+      "kind": "authored-motif",
+      "title": "Arched opening",
+      "semantic": {
+        "tags": [
+          "arch",
+          "architecture",
+          "gateway"
+        ],
+        "features": [
+          "bilateral-symmetry",
+          "opening",
+          "supported-span"
+        ],
+        "proportions": {
+          "width": 1,
+          "height": 0.8,
+          "depth": 0.2
+        }
+      },
+      "occupancy": {
+        "gridConvention": "integer motif cells; x=width, y=height, z=depth",
+        "cells": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            2,
+            0
+          ],
+          [
+            0,
+            3,
+            0
+          ],
+          [
+            1,
+            3,
+            0
+          ],
+          [
+            2,
+            3,
+            0
+          ],
+          [
+            3,
+            3,
+            0
+          ],
+          [
+            4,
+            0,
+            0
+          ],
+          [
+            4,
+            1,
+            0
+          ],
+          [
+            4,
+            2,
+            0
+          ],
+          [
+            4,
+            3,
+            0
+          ]
+        ],
+        "cellCount": 11,
+        "dimensions": {
+          "width": 5,
+          "height": 4,
+          "depth": 1
+        }
+      },
+      "provenance": {
+        "sourceCollection": "YelloBricks independently authored generic motifs",
+        "sourcePath": "tools/brick-corpus/sources.mjs",
+        "author": "YelloBricks contributors",
+        "derivation": "Original abstract motif authored as generic occupied cells; not traced from a third-party model"
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "declaration": "Dedicated to the public domain under CC0 1.0",
+        "attributionRequired": false,
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/"
+      },
+      "fingerprints": {
+        "occupancySha256": "3951fe11a75a9ed0e2ddbc593c31e712621abd488c498c0f03bee956baa7996f",
+        "rotationMirrorInvariantSha256": "a803cbcb1b9ff2e3e9f628352825f1c81b01726e9c6ee7642631d716357762ed"
+      },
+      "nearDuplicateCheck": {
+        "method": "maximum Jaccard similarity across horizontal rotations and mirrors",
+        "rejectionThreshold": 0.92,
+        "nearestEntryId": "motif-stepped-roof",
+        "nearestSimilarity": 0.1111,
+        "passed": true
+      }
+    },
+    {
+      "id": "motif-stepped-roof",
+      "kind": "authored-motif",
+      "title": "Stepped roof",
+      "semantic": {
+        "tags": [
+          "architecture",
+          "roof",
+          "shelter"
+        ],
+        "features": [
+          "bilateral-symmetry",
+          "ridge",
+          "sloped-profile"
+        ],
+        "proportions": {
+          "width": 0.6,
+          "height": 0.6,
+          "depth": 1
+        }
+      },
+      "occupancy": {
+        "gridConvention": "integer motif cells; x=width, y=height, z=depth",
+        "cells": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            2
+          ],
+          [
+            0,
+            0,
+            3
+          ],
+          [
+            0,
+            0,
+            4
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            2
+          ],
+          [
+            1,
+            1,
+            3
+          ],
+          [
+            2,
+            2,
+            2
+          ]
+        ],
+        "cellCount": 9,
+        "dimensions": {
+          "width": 3,
+          "height": 3,
+          "depth": 5
+        }
+      },
+      "provenance": {
+        "sourceCollection": "YelloBricks independently authored generic motifs",
+        "sourcePath": "tools/brick-corpus/sources.mjs",
+        "author": "YelloBricks contributors",
+        "derivation": "Original abstract motif authored as generic occupied cells; not traced from a third-party model"
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "declaration": "Dedicated to the public domain under CC0 1.0",
+        "attributionRequired": false,
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/"
+      },
+      "fingerprints": {
+        "occupancySha256": "2dcfaa04e215a1078bc657629c052c5c062f12deab63f2fe841cdcf3aae9d257",
+        "rotationMirrorInvariantSha256": "2dcfaa04e215a1078bc657629c052c5c062f12deab63f2fe841cdcf3aae9d257"
+      },
+      "nearDuplicateCheck": {
+        "method": "maximum Jaccard similarity across horizontal rotations and mirrors",
+        "rejectionThreshold": 0.92,
+        "nearestEntryId": "motif-wheel-pair-chassis",
+        "nearestSimilarity": 0.2778,
+        "passed": true
+      }
+    },
+    {
+      "id": "motif-tower-crown",
+      "kind": "authored-motif",
+      "title": "Tower crown",
+      "semantic": {
+        "tags": [
+          "architecture",
+          "castle",
+          "tower"
+        ],
+        "features": [
+          "corner-turrets",
+          "fourfold-symmetry",
+          "parapet"
+        ],
+        "proportions": {
+          "width": 1,
+          "height": 0.6667,
+          "depth": 1
+        }
+      },
+      "occupancy": {
+        "gridConvention": "integer motif cells; x=width, y=height, z=depth",
+        "cells": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            2
+          ],
+          [
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            1
+          ],
+          [
+            1,
+            0,
+            2
+          ],
+          [
+            2,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            1
+          ],
+          [
+            2,
+            0,
+            2
+          ],
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            2
+          ]
+        ],
+        "cellCount": 13,
+        "dimensions": {
+          "width": 3,
+          "height": 2,
+          "depth": 3
+        }
+      },
+      "provenance": {
+        "sourceCollection": "YelloBricks independently authored generic motifs",
+        "sourcePath": "tools/brick-corpus/sources.mjs",
+        "author": "YelloBricks contributors",
+        "derivation": "Original abstract motif authored as generic occupied cells; not traced from a third-party model"
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "declaration": "Dedicated to the public domain under CC0 1.0",
+        "attributionRequired": false,
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/"
+      },
+      "fingerprints": {
+        "occupancySha256": "a8a2fb1502595eb62c2e7b77568c64f1ba564c4036e4eae2665115e0139d6221",
+        "rotationMirrorInvariantSha256": "a8a2fb1502595eb62c2e7b77568c64f1ba564c4036e4eae2665115e0139d6221"
+      },
+      "nearDuplicateCheck": {
+        "method": "maximum Jaccard similarity across horizontal rotations and mirrors",
+        "rejectionThreshold": 0.92,
+        "nearestEntryId": "motif-wing-pair",
+        "nearestSimilarity": 0.25,
+        "passed": true
+      }
+    },
+    {
+      "id": "motif-wheel-pair-chassis",
+      "kind": "authored-motif",
+      "title": "Wheel-pair chassis",
+      "semantic": {
+        "tags": [
+          "chassis",
+          "ground",
+          "vehicle"
+        ],
+        "features": [
+          "axle-line",
+          "bilateral-symmetry",
+          "wheel-pair"
+        ],
+        "proportions": {
+          "width": 0.8,
+          "height": 0.4,
+          "depth": 1
+        }
+      },
+      "occupancy": {
+        "gridConvention": "integer motif cells; x=width, y=height, z=depth",
+        "cells": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            4
+          ],
+          [
+            1,
+            1,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            2
+          ],
+          [
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            1,
+            4
+          ],
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            1
+          ],
+          [
+            2,
+            1,
+            2
+          ],
+          [
+            2,
+            1,
+            3
+          ],
+          [
+            2,
+            1,
+            4
+          ],
+          [
+            3,
+            0,
+            0
+          ],
+          [
+            3,
+            0,
+            4
+          ]
+        ],
+        "cellCount": 14,
+        "dimensions": {
+          "width": 4,
+          "height": 2,
+          "depth": 5
+        }
+      },
+      "provenance": {
+        "sourceCollection": "YelloBricks independently authored generic motifs",
+        "sourcePath": "tools/brick-corpus/sources.mjs",
+        "author": "YelloBricks contributors",
+        "derivation": "Original abstract motif authored as generic occupied cells; not traced from a third-party model"
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "declaration": "Dedicated to the public domain under CC0 1.0",
+        "attributionRequired": false,
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/"
+      },
+      "fingerprints": {
+        "occupancySha256": "42cad527dcdf64bdd5c5730217b32c3ef4bda5bdd9fb80b23d31a24e7971908c",
+        "rotationMirrorInvariantSha256": "68ea6c65cedff9ddd4600a1339adf40085ee1f235dab25ebd7ef7eb03ba30512"
+      },
+      "nearDuplicateCheck": {
+        "method": "maximum Jaccard similarity across horizontal rotations and mirrors",
+        "rejectionThreshold": 0.92,
+        "nearestEntryId": "motif-stepped-roof",
+        "nearestSimilarity": 0.2778,
+        "passed": true
+      }
+    },
+    {
+      "id": "motif-wing-pair",
+      "kind": "authored-motif",
+      "title": "Tapered wing pair",
+      "semantic": {
+        "tags": [
+          "aircraft",
+          "spacecraft",
+          "wing"
+        ],
+        "features": [
+          "bilateral-symmetry",
+          "central-spine",
+          "tapered-wings"
+        ],
+        "proportions": {
+          "width": 1,
+          "height": 0.1429,
+          "depth": 0.7143
+        }
+      },
+      "occupancy": {
+        "gridConvention": "integer motif cells; x=width, y=height, z=depth",
+        "cells": [
+          [
+            0,
+            0,
+            2
+          ],
+          [
+            1,
+            0,
+            2
+          ],
+          [
+            1,
+            0,
+            3
+          ],
+          [
+            2,
+            0,
+            2
+          ],
+          [
+            2,
+            0,
+            3
+          ],
+          [
+            2,
+            0,
+            4
+          ],
+          [
+            3,
+            0,
+            0
+          ],
+          [
+            3,
+            0,
+            1
+          ],
+          [
+            3,
+            0,
+            2
+          ],
+          [
+            3,
+            0,
+            3
+          ],
+          [
+            3,
+            0,
+            4
+          ],
+          [
+            4,
+            0,
+            2
+          ],
+          [
+            4,
+            0,
+            3
+          ],
+          [
+            4,
+            0,
+            4
+          ],
+          [
+            5,
+            0,
+            2
+          ],
+          [
+            5,
+            0,
+            3
+          ],
+          [
+            6,
+            0,
+            2
+          ]
+        ],
+        "cellCount": 17,
+        "dimensions": {
+          "width": 7,
+          "height": 1,
+          "depth": 5
+        }
+      },
+      "provenance": {
+        "sourceCollection": "YelloBricks independently authored generic motifs",
+        "sourcePath": "tools/brick-corpus/sources.mjs",
+        "author": "YelloBricks contributors",
+        "derivation": "Original abstract motif authored as generic occupied cells; not traced from a third-party model"
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "declaration": "Dedicated to the public domain under CC0 1.0",
+        "attributionRequired": false,
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/"
+      },
+      "fingerprints": {
+        "occupancySha256": "9c7a7c12610b33bd831c94ceaa27be54e45a2587a2febd28391e200b23b50f4c",
+        "rotationMirrorInvariantSha256": "b72b9c3cc2ecd1627c59a5148e785ffa24f4e242a00e4e7fe6130d6cb2f1bbc3"
+      },
+      "nearDuplicateCheck": {
+        "method": "maximum Jaccard similarity across horizontal rotations and mirrors",
+        "rejectionThreshold": 0.92,
+        "nearestEntryId": "motif-tower-crown",
+        "nearestSimilarity": 0.25,
+        "passed": true
+      }
+    }
+  ]
+}

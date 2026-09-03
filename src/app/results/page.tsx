@@ -70,6 +70,9 @@ function AIBuildCard({ build, advancedLabels }: { build: import('@/store/garage'
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1">
                     <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded font-semibold">AI</span>
+                    {build.candidateRank !== undefined && (
+                        <span className="text-[10px] text-gray-400">Candidate #{build.candidateRank}</span>
+                    )}
                     <span className="text-xs text-gray-400">{build.totalParts} bricks · {layerCount} steps</span>
                 </div>
             </div>
@@ -87,6 +90,29 @@ function AIBuildCard({ build, advancedLabels }: { build: import('@/store/garage'
                 </div>
             </div>
 
+            {build.diagnostics && (
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-lg border border-gray-100 bg-gray-50 p-2 text-[11px]">
+                    <span className="text-gray-500">Semantic approximation</span>
+                    <span className="text-right font-semibold">
+                        {build.diagnostics.semanticApproximation === null
+                            ? 'n/a'
+                            : `${build.diagnostics.semanticApproximation}%`}
+                    </span>
+                    <span className="text-gray-500">Stability</span>
+                    <span className="text-right font-semibold">{build.diagnostics.stability}%</span>
+                    <span className="text-gray-500">Prefix stability</span>
+                    <span className="text-right font-semibold">{build.diagnostics.prefixStability}%</span>
+                    <span className="text-gray-500">Inventory used</span>
+                    <span className="text-right font-semibold">{build.diagnostics.inventoryUse}%</span>
+                </div>
+            )}
+
+            {build.warnings && build.warnings.length > 0 && (
+                <div className="rounded-lg bg-orange-50 px-2.5 py-2 text-[11px] text-orange-800">
+                    {build.warnings.map((warning) => <p key={warning}>• {warning}</p>)}
+                </div>
+            )}
+
             <button
                 onClick={() => setExpanded(!expanded)}
                 className="text-xs text-blue-600 flex items-center gap-1 hover:underline"
@@ -100,7 +126,11 @@ function AIBuildCard({ build, advancedLabels }: { build: import('@/store/garage'
                     {groupedSteps.map(({ stepNum, parts }) => (
                         <li key={stepNum} className="flex gap-2 py-0.5 border-b border-gray-100 last:border-0">
                             <span className="text-gray-400 w-5 shrink-0 text-right">{stepNum}.</span>
-                            <span className="flex-1">{parts[0]?.description ?? 'Add next layer'}</span>
+                            <span className="flex-1">
+                                {build.assemblySteps?.find((step) => step.number === stepNum)?.title
+                                    ?? parts[0]?.description
+                                    ?? 'Add next layer'}
+                            </span>
                             <span className="text-gray-400 shrink-0">{parts.length} bricks</span>
                         </li>
                     ))}
@@ -111,12 +141,31 @@ function AIBuildCard({ build, advancedLabels }: { build: import('@/store/garage'
                 className="w-full py-2 bg-yellow-400 text-black font-bold rounded-lg text-sm">
                 Open instruction viewer
             </button>
+            {build.sources && build.sources.length > 0 && (
+                <p className="text-[10px] text-gray-500">
+                    Semantic references: {build.sources.map((source) =>
+                        `${source.id} (${source.license.id})`,
+                    ).join(', ')}
+                </p>
+            )}
+            <p className="text-[10px] text-gray-400">
+                Brief: {build.briefSource === 'openrouter'
+                    ? 'schema-validated AI interpretation'
+                    : build.briefSource === 'deterministic-fallback'
+                        ? 'deterministic interpretation'
+                        : 'legacy build (interpretation source unavailable)'}
+            </p>
             <p className="text-[10px] text-gray-300">Generated {new Date(build.generatedAt).toLocaleString()}</p>
             {viewer && (
                 <InstructionViewer
                     name={build.name}
                     steps={placed}
                     ldrawText={build.ldrawText}
+                    diagnostics={build.diagnostics}
+                    warnings={build.warnings}
+                    sources={build.sources}
+                    assemblySteps={build.assemblySteps}
+                    inspiration={build.inspiration}
                     onClose={() => setViewer(false)}
                 />
             )}
@@ -130,11 +179,11 @@ function AIBuildCard({ build, advancedLabels }: { build: import('@/store/garage'
 
 export default function ResultsPage() {
     const {
-        sets, mocs, smartMatches, aiBuilds, aiMode, aiPrompt, crossMixes,
+        sets, mocs, smartMatches, aiBuilds, aiPrompt, crossMixes,
         age, fidelityWeight, selectedSetIds, setInventories, matchRules, smartSources,
         findBuilds, findSmartBuilds, generateAIBuilds, findCrossMixes,
         setAIMode, setAIPrompt, setAge, setFidelityWeight, setMatchRules, setSmartSources,
-        isLoading, isAILoading, error,
+        isLoading, isAILoading, aiGenerationPhase, error,
     } = useGarageStore();
 
     const router = useRouter();
@@ -146,12 +195,15 @@ export default function ResultsPage() {
     const [crossScaleOk, setCrossScaleOk] = useState(false);
     const [smartQuery, setSmartQuery] = useState<string | undefined>();
 
-    useEffect(() => { useGarageStore.persist.rehydrate(); setIsHydrated(true); }, []);
+    useEffect(() => {
+        void Promise.resolve(useGarageStore.persist.rehydrate()).then(() => setIsHydrated(true));
+    }, []);
 
     useEffect(() => {
         if (!isHydrated) return;
         const mixed = selectionHasMixedScales(sets, selectedSetIds, setInventories);
         if (mixed && sessionStorage.getItem(CROSS_SCALE_ACK_KEY) !== '1') {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setCrossScaleGate(true);
             setCrossScaleOk(false);
             return;
@@ -164,14 +216,18 @@ export default function ResultsPage() {
     }, [isHydrated, crossScaleOk, sets.length, mocs.length, findBuilds]);
 
     const handleRefresh = () => {
-        if (activeTab === 'strict') findBuilds();
+        if (activeTab === 'strict') findBuilds(smartQuery);
         else if (activeTab === 'smart') findSmartBuilds(smartQuery);
     };
 
     const handleSuggestionSearch = (query: string) => {
-        setActiveTab('smart');
         setSmartQuery(query);
-        findSmartBuilds(query);
+        if (activeTab === 'smart') {
+            findSmartBuilds(query);
+        } else {
+            setActiveTab('strict');
+            findBuilds(query);
+        }
     };
 
     const filteredSmartMatches = smartMatches
@@ -314,7 +370,8 @@ export default function ResultsPage() {
                             <button key={id}
                                 onClick={() => {
                                     setActiveTab(id);
-                                    if (id === 'smart' && smartMatches.length === 0) findSmartBuilds(smartQuery);
+                                    if (id === 'strict') findBuilds(smartQuery);
+                                    if (id === 'smart') findSmartBuilds(smartQuery);
                                     if (id === 'cross') findCrossMixes();
                                     if (id === 'ai') setAIMode(true);
                                     else setAIMode(false);
@@ -422,10 +479,10 @@ export default function ResultsPage() {
 
                 <p className="text-sm text-gray-600 mb-6 -mt-2 max-w-3xl">
                     {activeTab === 'strict' && (
-                        <>Official and community <span className="font-semibold text-gray-800">alternate builds</span> listed for your selected sets on Rebrickable — same set number, different designs.</>
+                        <>Community <span className="font-semibold text-gray-800">alternate builds</span> for your selected sets on Rebrickable. {smartQuery && <>Showing only designs semantically related to “{smartQuery}”.</>}</>
                     )}
                     {activeTab === 'smart' && (
-                        <>Search <span className="font-semibold text-gray-800">Official LEGO</span> sets and/or <span className="font-semibold text-gray-800">Rebrickable</span> community alternates. We pull topic hits (e.g. “forklift”), then keep what you can mostly build from your bricks — not giant sets that are mostly new parts.</>
+                        <>Search <span className="font-semibold text-gray-800">Official LEGO</span> sets and/or <span className="font-semibold text-gray-800">Rebrickable</span> community alternates. The same semantic filter {smartQuery ? <>for “{smartQuery}”</> : null} is applied to both sources before brick matching.</>
                     )}
                     {activeTab === 'cross' && (
                         <>Useful combos of <span className="font-semibold text-gray-800">2–3 sets you already own</span> — which piles to dump together for the strongest mixed bin, then run Smart Mix on that combo.</>
@@ -459,7 +516,7 @@ export default function ResultsPage() {
                             : <EmptyState
                                 label="No matches at current score threshold."
                                 hint="Lower the minimum score or add more sets."
-                                action={{ label: 'Generate Ideas', onClick: () => findSmartBuilds(smartQuery) }}
+                                action={{ label: 'Refresh Smart Mix', onClick: () => findSmartBuilds(smartQuery) }}
                               />
                 )}
 
@@ -520,12 +577,19 @@ export default function ResultsPage() {
                                 </button>
                             </div>
                             <p className="text-xs text-gray-400">
-                                The AI will design a novel build using only the bricks in your garage,
-                                respecting your fidelity / rigidity settings.
+                                One semantic brief is interpreted, then up to three original candidates are
+                                planned locally using only your garage inventory.
                             </p>
                         </div>
 
-                        {isAILoading && <Spinner text="AI is designing your build…" />}
+                        {isAILoading && (
+                            <Spinner text={{
+                                'preparing-inventory': 'Preparing selected garage inventory…',
+                                'interpreting-and-planning': 'Interpreting the request and planning local candidates…',
+                                'saving-candidates': 'Saving generated candidates…',
+                                idle: 'Starting generation…',
+                            }[aiGenerationPhase]} />
+                        )}
 
                         {!isAILoading && aiBuilds.length > 0 && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

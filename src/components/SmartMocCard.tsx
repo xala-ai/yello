@@ -1,5 +1,5 @@
 import { Moc } from '@/types/rebrickable';
-import { ExternalLink, User, Calendar, PieChart, AlertCircle, Box, FileText } from 'lucide-react';
+import { User, PieChart, AlertCircle, FileText } from 'lucide-react';
 import Image from 'next/image';
 import { MatchResult } from '@/lib/inventory';
 import { useState } from 'react';

@@ -26,8 +26,7 @@ export default function Home() {
   const setInventories = useGarageStore((s) => s.setInventories);
 
   useEffect(() => {
-    useGarageStore.persist.rehydrate();
-    setIsHydrated(true);
+    void Promise.resolve(useGarageStore.persist.rehydrate()).then(() => setIsHydrated(true));
   }, []);
 
   const goResults = () => router.push('/results');

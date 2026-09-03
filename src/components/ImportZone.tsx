@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useGarageStore } from '@/store/garage';
-import { Upload, FileSpreadsheet, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, Loader2, AlertCircle } from 'lucide-react';
 
 export function ImportZone() {
   const { addSet } = useGarageStore();

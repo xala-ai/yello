@@ -1,0 +1,112 @@
+export const corpusVersion = 1;
+
+export const ldrawSources = [
+  {
+    id: "ldraw-lighthouse-30023",
+    path: "public/ldraw/samples/30023-1-Lighthouse.ldr_Packed.mpd",
+    modelName: "30023 - Lighthouse.ldr",
+    title: "Lighthouse",
+    author: "Merlijn Wissink [legolijntje]",
+    license: "CCAL-2.0",
+    licenseEvidence: "0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt",
+    sourceCollection: "LDraw",
+    sourceUrl: "https://library.ldraw.org/",
+    tags: ["architecture", "coastal", "lighthouse", "tower"],
+    features: ["tall-profile", "tiered-body", "roof-cap", "rotational-symmetry"],
+  },
+  {
+    id: "ldraw-lunar-mpv-1621",
+    path: "public/ldraw/samples/1621-1-LunarMPVVehicle.mpd_Packed.mpd",
+    modelName: "1621 - Lunar MPV Vehicle.ldr",
+    title: "Lunar MPV Vehicle",
+    author: "Damien Roux [Darats]",
+    license: "CCAL-2.0",
+    licenseEvidence: "0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt",
+    sourceCollection: "LDraw",
+    sourceUrl: "https://library.ldraw.org/",
+    tags: ["space", "vehicle", "rover", "utility"],
+    features: ["wheels", "cab", "cargo-section", "bilateral-symmetry"],
+  },
+  {
+    id: "ldraw-mini-vehicles-4838",
+    path: "public/ldraw/samples/4838-1-MiniVehicles.mpd_Packed.mpd",
+    modelName: "4838 - Mini Vehicles - Carrier and Car.mpd",
+    title: "Mini Vehicles - Carrier and Car",
+    author: "Ken Drew [Ken]",
+    license: "CCAL-2.0",
+    licenseEvidence: "0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt",
+    sourceCollection: "LDraw",
+    sourceUrl: "https://library.ldraw.org/",
+    tags: ["vehicle", "truck", "carrier", "car"],
+    features: ["wheels", "cab", "cargo-deck", "bilateral-symmetry"],
+  },
+  {
+    id: "ldraw-x-wing-30051",
+    path: "public/ldraw/samples/30051-1-X-wingFighter-Mini.mpd_Packed.mpd",
+    modelName: "30051 - X-Wing Fighter.ldr",
+    title: "X-Wing Fighter",
+    author: "Jude Parrill",
+    license: "CCAL-2.0",
+    licenseEvidence: "0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt",
+    sourceCollection: "LDraw",
+    sourceUrl: "https://library.ldraw.org/",
+    tags: ["spacecraft", "fighter", "aircraft", "science-fiction"],
+    features: ["wings", "nose", "engines", "bilateral-symmetry"],
+  },
+];
+
+export const authoredMotifs = [
+  {
+    id: "motif-wheel-pair-chassis",
+    title: "Wheel-pair chassis",
+    tags: ["vehicle", "chassis", "ground"],
+    features: ["wheel-pair", "axle-line", "bilateral-symmetry"],
+    cells: [
+      [0, 0, 0], [0, 0, 4], [1, 1, 0], [1, 1, 1], [1, 1, 2], [1, 1, 3],
+      [1, 1, 4], [2, 1, 0], [2, 1, 1], [2, 1, 2], [2, 1, 3], [2, 1, 4],
+      [3, 0, 0], [3, 0, 4],
+    ],
+  },
+  {
+    id: "motif-stepped-roof",
+    title: "Stepped roof",
+    tags: ["architecture", "roof", "shelter"],
+    features: ["sloped-profile", "ridge", "bilateral-symmetry"],
+    cells: [
+      [0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3], [0, 0, 4],
+      [1, 1, 1], [1, 1, 2], [1, 1, 3], [2, 2, 2],
+    ],
+  },
+  {
+    id: "motif-arched-opening",
+    title: "Arched opening",
+    tags: ["architecture", "arch", "gateway"],
+    features: ["opening", "supported-span", "bilateral-symmetry"],
+    cells: [
+      [0, 0, 0], [0, 1, 0], [0, 2, 0], [0, 3, 0], [1, 3, 0],
+      [2, 3, 0], [3, 3, 0], [4, 3, 0], [4, 2, 0], [4, 1, 0], [4, 0, 0],
+    ],
+  },
+  {
+    id: "motif-wing-pair",
+    title: "Tapered wing pair",
+    tags: ["aircraft", "spacecraft", "wing"],
+    features: ["tapered-wings", "central-spine", "bilateral-symmetry"],
+    cells: [
+      [0, 0, 2], [1, 0, 2], [1, 0, 3], [2, 0, 2], [2, 0, 3], [2, 0, 4],
+      [3, 0, 0], [3, 0, 1], [3, 0, 2], [3, 0, 3], [3, 0, 4],
+      [4, 0, 2], [4, 0, 3], [4, 0, 4], [5, 0, 2], [5, 0, 3], [6, 0, 2],
+    ],
+  },
+  {
+    id: "motif-tower-crown",
+    title: "Tower crown",
+    tags: ["architecture", "tower", "castle"],
+    features: ["parapet", "corner-turrets", "fourfold-symmetry"],
+    cells: [
+      [0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 0], [0, 1, 2],
+      [1, 0, 0], [1, 0, 1], [1, 0, 2], [2, 0, 0], [2, 0, 1],
+      [2, 0, 2], [2, 1, 0], [2, 1, 2],
+    ],
+  },
+];

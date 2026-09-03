@@ -1,0 +1,47 @@
+import type { SequencerInventoryItem } from './sequencer';
+import type { BuildCategory } from './types';
+
+export const GOLDEN_BUILD_PROMPTS: Array<readonly [BuildCategory, string]> = [
+  ['vehicle', 'a small red rally car with wheels, a cab and a low sloped profile'],
+  ['forklift', 'a small yellow forklift with four wheels, forks, a mast and a cab'],
+  ['spacecraft', 'a small white spacecraft with a transparent cockpit, wings and twin engines'],
+  ['aircraft', 'a small blue helicopter with a transparent cockpit, tail and landing supports'],
+  ['building', 'a small white house with a red roof, windows and a door'],
+  ['castle', 'a small gray castle with battlements, corner turrets and an arched entrance'],
+  ['tower', 'a tall white lighthouse tower with a roof cap and transparent windows'],
+  ['bridge', 'a small red bridge with a supported span, pillars and an opening'],
+  ['animal', 'a small green dragon animal with a head, eyes, body, four legs and a tail'],
+  ['furniture', 'a small brown chair with four supports, a seat and a backrest'],
+  ['sculpture', 'a small symmetrical abstract sculpture with a recognizable silhouette'],
+];
+
+export const GOLDEN_BUILD_INVENTORY: SequencerInventoryItem[] = [
+  { partNum: '3005', name: 'Brick 1 x 1', colorId: 4, colorName: 'Red', qty: 24 },
+  { partNum: '3004', name: 'Brick 1 x 2', colorId: 14, colorName: 'Yellow', qty: 24 },
+  { partNum: '3622', name: 'Brick 1 x 3', colorId: 1, colorName: 'Blue', qty: 12 },
+  { partNum: '3010', name: 'Brick 1 x 4', colorId: 15, colorName: 'White', qty: 16 },
+  { partNum: '3003', name: 'Brick 2 x 2', colorId: 0, colorName: 'Black', qty: 18 },
+  { partNum: '3002', name: 'Brick 2 x 3', colorId: 4, colorName: 'Red', qty: 12 },
+  { partNum: '3001', name: 'Brick 2 x 4', colorId: 14, colorName: 'Yellow', qty: 14 },
+  { partNum: '2456', name: 'Brick 2 x 6', colorId: 15, colorName: 'White', qty: 8 },
+  { partNum: '3024', name: 'Plate 1 x 1', colorId: 4, colorName: 'Red', qty: 20 },
+  { partNum: '3023', name: 'Plate 1 x 2', colorId: 1, colorName: 'Blue', qty: 24 },
+  { partNum: '3710', name: 'Plate 1 x 4', colorId: 15, colorName: 'White', qty: 16 },
+  { partNum: '3022', name: 'Plate 2 x 2', colorId: 0, colorName: 'Black', qty: 16 },
+  { partNum: '3021', name: 'Plate 2 x 3', colorId: 14, colorName: 'Yellow', qty: 12 },
+  { partNum: '3020', name: 'Plate 2 x 4', colorId: 4, colorName: 'Red', qty: 12 },
+  { partNum: '3031', name: 'Plate 4 x 4', colorId: 8, colorName: 'Dark Bluish Gray', qty: 6 },
+  { partNum: '3070b', name: 'Tile 1 x 1', colorId: 14, colorName: 'Yellow', qty: 12 },
+  { partNum: '3069b', name: 'Tile 1 x 2', colorId: 15, colorName: 'White', qty: 12 },
+  { partNum: '3040b', name: 'Slope 45 1 x 2', colorId: 4, colorName: 'Red', qty: 12 },
+  { partNum: '3039', name: 'Slope 45 2 x 2', colorId: 1, colorName: 'Blue', qty: 10 },
+  { partNum: '3298', name: 'Slope 33 2 x 3', colorId: 15, colorName: 'White', qty: 8 },
+  { partNum: '3065', name: 'Transparent brick 1 x 2', colorId: 47, colorName: 'Trans-Clear', qty: 8 },
+  { partNum: '60592', name: 'Window 1 x 2 x 2', colorId: 47, colorName: 'Trans-Clear', qty: 4 },
+  { partNum: '62360', name: 'Windscreen 2 x 4', colorId: 33, colorName: 'Trans-Blue', qty: 4 },
+  { partNum: '55982', name: 'Wheel 18 x 14', colorId: 0, colorName: 'Black', qty: 8 },
+  { partNum: '6014', name: 'Wheel 11 x 8', colorId: 0, colorName: 'Black', qty: 8 },
+  { partNum: '3705', name: 'Technic Axle 4', colorId: 8, colorName: 'Dark Bluish Gray', qty: 6 },
+  { partNum: '3700', name: 'Technic Brick 1 x 2', colorId: 14, colorName: 'Yellow', qty: 8 },
+  { partNum: '3701', name: 'Technic Brick 1 x 4', colorId: 4, colorName: 'Red', qty: 6 },
+];

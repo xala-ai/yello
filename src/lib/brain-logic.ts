@@ -1,11 +1,11 @@
 import { LegoSet, InventoryPart } from '@/types/rebrickable';
-import { BrainDatabase, SetDNA, INITIAL_BRAIN } from './brain-data';
+import { SetDNA, INITIAL_BRAIN } from './brain-data';
 import { getShapeKey } from './inventory';
 import { isDuploPart, isDuploSet } from './duplo';
 
 // In a real app, this would be a database or a persistent JSON file on server
 // For MVP client-side, we'll just keep it in memory or local storage via Zustand later
-let GLOBAL_BRAIN = { ...INITIAL_BRAIN };
+const GLOBAL_BRAIN = { ...INITIAL_BRAIN };
 
 export function analyzeSetDNA(set: LegoSet, inventory: InventoryPart[]): SetDNA {
     // 1. Calculate Basic Stats

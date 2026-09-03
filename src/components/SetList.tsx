@@ -1,11 +1,10 @@
 'use client';
 
 import { useGarageStore } from '@/store/garage';
-import { Trash2, ExternalLink, CheckCircle, Circle, Brain, Zap, Settings } from 'lucide-react';
+import { Trash2, ExternalLink, CheckCircle, Circle, Brain, Settings } from 'lucide-react';
 import Image from 'next/image';
 import clsx from 'clsx';
 import { getBrain } from '@/lib/brain-logic';
-import { useEffect, useState } from 'react';
 
 export function SetList() {
   const { sets, removeSet, selectedSetIds, toggleSetSelection, selectAllSets } = useGarageStore();

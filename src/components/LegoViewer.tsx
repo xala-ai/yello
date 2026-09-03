@@ -18,6 +18,9 @@ import {
 import { Box3, type Group, type Object3D, Vector3 } from 'three';
 import { useLDraw } from '@/hooks/useLDraw';
 import { ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
+import type { BuildQualityDiagnostics, BuildSourceAttribution } from '@/lib/planner';
+import type { AssemblyStep } from '@/lib/brickgpt/instructions';
+import type { AIBuild } from '@/store/garage';
 
 function applyBuildingStep(root: Object3D, step: number) {
   root.traverse((c) => {
@@ -118,6 +121,11 @@ export function LegoViewer({
   fileUrl,
   title,
   instructionSteps,
+  diagnostics,
+  warnings,
+  sources,
+  assemblySteps,
+  inspiration,
   onClose,
 }: {
   fileUrl: string;
@@ -127,9 +135,19 @@ export function LegoViewer({
     partNum: string;
     colorName: string;
     description: string;
+    title?: string;
   }>;
+  diagnostics?: BuildQualityDiagnostics;
+  warnings?: string[];
+  sources?: BuildSourceAttribution[];
+  assemblySteps?: AssemblyStep[];
+  inspiration?: AIBuild['inspiration'];
   onClose: () => void;
 }) {
+  const instructionStepCount = Math.max(
+    1,
+    ...(instructionSteps ?? []).map((item) => item.stepNum),
+  );
   const [numSteps, setNumSteps] = useState(1);
   const [step, setStep] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -139,16 +157,17 @@ export function LegoViewer({
 
   const onReady = useCallback(
     (steps: number) => {
+      const resolvedSteps = Math.max(steps, instructionStepCount);
       setModelReady(true);
       if (readyForUrl.current === fileUrl) {
-        setNumSteps(steps);
+        setNumSteps(resolvedSteps);
         return;
       }
       readyForUrl.current = fileUrl;
-      setNumSteps(steps);
-      setStep(steps - 1);
+      setNumSteps(resolvedSteps);
+      setStep(resolvedSteps - 1);
     },
-    [fileUrl],
+    [fileUrl, instructionStepCount],
   );
 
   const retry = () => {
@@ -223,7 +242,49 @@ export function LegoViewer({
           </ViewerErrorBoundary>
         </div>
         {instructionSteps && instructionSteps.length > 0 && (
-          <aside className="hidden md:block w-72 border-l border-[#333] bg-[#181818] pt-20 p-3 overflow-y-auto">
+          <aside className="hidden md:block w-80 border-l border-[#333] bg-[#181818] pt-20 p-3 overflow-y-auto">
+            {(diagnostics || inspiration) && (
+              <div className="mb-4 rounded-lg border border-[#333] bg-white/5 p-2.5 text-xs text-gray-300 space-y-2">
+                {inspiration && (
+                  <div>
+                    <p className="font-semibold text-yellow-200">Original, name-inspired build</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{inspiration.limitation}</p>
+                    {inspiration.url && (
+                      <a
+                        href={inspiration.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-sky-300 hover:underline"
+                      >
+                        Open inspiration source
+                      </a>
+                    )}
+                  </div>
+                )}
+                {diagnostics && (
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                    <span>Semantic approximation</span>
+                    <span className="text-right font-semibold">
+                      {diagnostics.semanticApproximation === null
+                        ? 'n/a'
+                        : `${diagnostics.semanticApproximation}%`}
+                    </span>
+                    <span>Stability</span>
+                    <span className="text-right font-semibold">{diagnostics.stability}%</span>
+                    <span>Prefix stability</span>
+                    <span className="text-right font-semibold">{diagnostics.prefixStability}%</span>
+                    <span>Inventory used</span>
+                    <span className="text-right font-semibold">{diagnostics.inventoryUse}%</span>
+                  </div>
+                )}
+              </div>
+            )}
+            {warnings && warnings.length > 0 && (
+              <div className="mb-4 rounded-lg border border-orange-400/20 bg-orange-400/10 p-2 text-[10px] text-orange-100">
+                <p className="font-semibold mb-1">Planner warnings</p>
+                {warnings.map((warning) => <p key={warning}>• {warning}</p>)}
+              </div>
+            )}
             <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-2">
               Build steps
             </p>
@@ -242,15 +303,52 @@ export function LegoViewer({
                   }`}
                 >
                   <span className="font-bold mr-1.5">{stepNumber}.</span>
-                  {parts[0]?.description ?? 'Add the next layer'}
+                  {parts[0]?.title ?? parts[0]?.description ?? 'Add the next layer'}
                   {parts.length > 0 && (
                     <span className="block text-[10px] text-gray-500 mt-1">
                       {parts.length} brick{parts.length === 1 ? '' : 's'}: {parts.map((part) => part.partNum).join(', ')}
                     </span>
                   )}
+                  {(assemblySteps?.find((item) => item.number === stepNumber)?.dependsOnSteps.length ?? 0) > 0 && (
+                    <span className="block text-[10px] text-gray-500">
+                      Depends on step {assemblySteps?.find((item) => item.number === stepNumber)?.dependsOnSteps.join(', ')}
+                    </span>
+                  )}
                 </button>
               );
             })}
+            {sources && sources.length > 0 && (
+              <div className="mt-4 border-t border-[#333] pt-3 text-[10px] text-gray-400 space-y-2">
+                <p className="uppercase tracking-wide font-semibold">Semantic references</p>
+                {sources.map((source) => (
+                  <div key={source.id}>
+                    <p className="text-gray-300">{source.id}</p>
+                    <p>{source.provenance.author} · {source.license.id}</p>
+                    <a
+                      href={source.license.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sky-300 hover:underline"
+                    >
+                      License
+                    </a>
+                    {source.provenance.sourceUrl && (
+                      <>
+                        {' · '}
+                        <a
+                          href={source.provenance.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sky-300 hover:underline"
+                        >
+                          Source
+                        </a>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </aside>
         )}
         </div>

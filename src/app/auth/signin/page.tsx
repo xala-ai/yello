@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { registerEmailAction, registerKidAction } from '@/app/actions/auth';
 
 export default function SignInPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'register' | 'kid'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +22,7 @@ export default function SignInPage() {
     const res = await signIn('email-password', { email, password, redirect: false });
     setBusy(false);
     if (res?.error) setError('Invalid email or password');
-    else window.location.href = '/';
+    else router.push('/');
   };
 
   const onRegister = async () => {
@@ -28,7 +30,7 @@ export default function SignInPage() {
     try {
       await registerEmailAction(email, password, name || undefined);
       await signIn('email-password', { email, password, redirect: false });
-      window.location.href = '/';
+      router.push('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Register failed');
     } finally { setBusy(false); }
@@ -49,7 +51,7 @@ export default function SignInPage() {
     const res = await signIn('kid-passphrase', { passphrase, redirect: false });
     setBusy(false);
     if (res?.error) setError('Passphrase not found');
-    else window.location.href = '/';
+    else router.push('/');
   };
 
   return (

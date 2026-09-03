@@ -2,7 +2,16 @@
 
 import { LegoSet, InventoryPart, Moc } from '@/types/rebrickable';
 import type { AIBuild } from '@/store/garage';
-import { planBuildFromInventory } from '@/lib/planner';
+import {
+    planBuildCandidatesFromInventory,
+    type BuildPlan,
+} from '@/lib/planner';
+import {
+    createFallbackBuildBrief,
+    parseBuildBrief,
+    validateBuildBrief,
+} from '@/lib/brickgpt/brief';
+import type { BuildBrief } from '@/lib/brickgpt/types';
 import type { SlimInventoryItem } from '@/lib/inventory';
 
 const BASE_URL = 'https://rebrickable.com/api/v3';
@@ -196,79 +205,299 @@ export async function findRebrickableMocCandidatesAction(
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 const OPENROUTER_KEY  = process.env.OPENROUTER_API_KEY;
 const AI_MODEL = process.env.AI_BUILD_MODEL ?? 'anthropic/claude-opus-4.6';
+const SEARCH_FILTER_MODEL = process.env.SEARCH_FILTER_MODEL ?? 'openai/gpt-4o-mini';
+const AI_TIMEOUT_MS = 10_000;
 
-/**
- * Hybrid AI build: local inventory-constrained planner (rigidity-aware),
- * then optional Opus enrichment for naming / narrative when OpenRouter is set.
- * Accepts a slim inventory summary (not full Rebrickable part objects).
- */
-export async function generateAIBuildAction(
-    inventory: SlimInventoryItem[],
-    prompt: string,
-    fidelityWeight: number,
-    age: number,
-): Promise<AIBuild> {
-    if (!inventory?.length) throw new Error('No parts in selected sets');
+export interface SemanticFilterCandidate {
+    id: string;
+    name: string;
+    source: 'official' | 'rebrickable';
+}
 
-    const plan = await planBuildFromInventory(inventory, prompt, fidelityWeight, age);
+const SEARCH_SYNONYM_GROUPS = [
+    ['plane', 'airplane', 'aeroplane', 'aircraft', 'jet', 'glider', 'helicopter', 'seaplane'],
+    ['car', 'automobile', 'vehicle', 'racer', 'racecar', 'roadster'],
+    ['truck', 'lorry', 'pickup', 'hauler', 'vehicle'],
+    ['boat', 'ship', 'vessel', 'yacht', 'sailboat'],
+    ['spaceship', 'spacecraft', 'rocket', 'shuttle', 'starfighter'],
+    ['castle', 'fortress', 'citadel', 'keep', 'tower'],
+    ['house', 'home', 'building', 'cabin', 'cottage'],
+    ['forklift', 'fork lift', 'loader', 'warehouse vehicle'],
+] as const;
 
-    let name = plan.name;
-    let description = plan.description;
-
-    if (OPENROUTER_KEY) {
-        try {
-            const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${OPENROUTER_KEY}`,
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://yellobricks.xala.ai',
-                    'X-Title': 'YelloBricks',
-                },
-                body: JSON.stringify({
-                    model: AI_MODEL,
-                    temperature: 0.4,
-                    max_tokens: 400,
-                    response_format: { type: 'json_object' },
-                    messages: [
-                        {
-                            role: 'user',
-                            content: `Name this LEGO build for intent "${prompt}". Age=${age}, fidelityWeight=${fidelityWeight}.
-Steps (${plan.steps.length}): ${plan.steps.slice(0, 12).map((s) => s.description).join('; ')}.
-Return JSON: {"name":"...","description":"1-2 sentences"}`,
-                        },
-                    ],
-                }),
-            });
-            if (res.ok) {
-                const json = await res.json();
-                let content = json.choices?.[0]?.message?.content || '';
-                content = content.replace(/^```json\n?|\n?```$/g, '').trim();
-                const parsed = JSON.parse(content);
-                if (parsed.name) name = parsed.name;
-                if (parsed.description) description = parsed.description;
-            }
-        } catch {
-            // keep heuristic name/description
+function normalizedSearchTerms(value: string): Set<string> {
+    const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const terms = new Set(normalized.split(/\s+/).filter((term) => term.length >= 2));
+    for (const group of SEARCH_SYNONYM_GROUPS) {
+        if (group.some((term) => normalized.includes(term))) {
+            for (const term of group) terms.add(term);
         }
     }
+    return terms;
+}
 
+function lexicalSemanticFilter(
+    query: string,
+    candidates: SemanticFilterCandidate[],
+): string[] {
+    const wanted = normalizedSearchTerms(query);
+    return candidates
+        .filter((candidate) => {
+            const candidateTerms = normalizedSearchTerms(candidate.name);
+            return [...wanted].some((term) =>
+                candidate.name.toLowerCase().includes(term) || candidateTerms.has(term),
+            );
+        })
+        .map((candidate) => candidate.id);
+}
+
+/**
+ * Uses one small OpenRouter classification call to remove off-topic set/MOC
+ * names. Candidate IDs are opaque and validated locally before use.
+ */
+export async function filterBuildCandidatesAction(
+    query: string,
+    candidates: SemanticFilterCandidate[],
+): Promise<string[]> {
+    const trimmed = query.trim();
+    const batch = candidates
+        .filter((candidate) => candidate.id && candidate.name)
+        .slice(0, 80);
+    if (!trimmed || batch.length === 0) return batch.map((candidate) => candidate.id);
+
+    const fallback = lexicalSemanticFilter(trimmed, batch);
+    if (!OPENROUTER_KEY) return fallback;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 7_000);
+    try {
+        const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+            method: 'POST',
+            signal: controller.signal,
+            headers: {
+                Authorization: `Bearer ${OPENROUTER_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://yellobricks.xala.ai',
+                'X-Title': 'YelloBricks',
+            },
+            body: JSON.stringify({
+                model: SEARCH_FILTER_MODEL,
+                temperature: 0,
+                max_tokens: 900,
+                response_format: { type: 'json_object' },
+                messages: [
+                    {
+                        role: 'system',
+                        content:
+                            'Classify LEGO set and MOC names for semantic search. ' +
+                            'Keep direct matches and close forms of the requested object (for example plane includes airplane, jet, glider and helicopter), ' +
+                            'but reject names that merely share a vague theme or designer. Return only JSON {"matches":[{"id":"opaque id","relevance":0.0}]}. ' +
+                            'Only use supplied IDs and keep items with relevance at least 0.58.',
+                    },
+                    {
+                        role: 'user',
+                        content: JSON.stringify({ query: trimmed.slice(0, 120), candidates: batch }),
+                    },
+                ],
+            }),
+        });
+        if (!res.ok) return fallback;
+        const json = await res.json();
+        const content = json.choices?.[0]?.message?.content;
+        const parsed = typeof content === 'string' ? JSON.parse(content) : content;
+        const allowed = new Set(batch.map((candidate) => candidate.id));
+        if (!Array.isArray(parsed?.matches)) return fallback;
+        const rawMatches: unknown[] = parsed.matches;
+        const matches = rawMatches.filter(
+            (match: unknown): match is { id: string; relevance: number } =>
+                typeof match === 'object' && match !== null &&
+                typeof (match as { id?: unknown }).id === 'string' &&
+                typeof (match as { relevance?: unknown }).relevance === 'number' &&
+                (match as { relevance: number }).relevance >= 0.58,
+        );
+        const llmMatches = [...new Set<string>(
+            matches.map((match) => match.id).filter((id) => allowed.has(id)),
+        )];
+        // Reject an obviously permissive classification. This catches models
+        // that treat a shared LEGO/vehicle theme as relevant to every item.
+        if (
+            llmMatches.length > Math.max(5, batch.length * 0.6) &&
+            fallback.length < batch.length * 0.3
+        ) {
+            return fallback;
+        }
+        return llmMatches;
+    } catch {
+        return fallback;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+const BUILD_BRIEF_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
+    required: [
+        'category', 'scale', 'partBudget', 'proportions', 'symmetry',
+        'requiredFeatures', 'palette', 'complexity', 'seed',
+    ],
+    properties: {
+        category: {
+            type: 'string',
+            enum: [
+                'vehicle', 'forklift', 'spacecraft', 'aircraft', 'building',
+                'castle', 'tower', 'bridge', 'animal', 'furniture', 'sculpture',
+            ],
+        },
+        scale: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['name', 'targetWidth', 'targetHeight', 'targetDepth'],
+            properties: {
+                name: { type: 'string', enum: ['micro', 'small', 'medium', 'large'] },
+                targetWidth: { type: 'number', minimum: 1, maximum: 256 },
+                targetHeight: { type: 'number', minimum: 1, maximum: 256 },
+                targetDepth: { type: 'number', minimum: 1, maximum: 256 },
+            },
+        },
+        partBudget: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['min', 'max'],
+            properties: {
+                min: { type: 'number', minimum: 0, maximum: 10000 },
+                max: { type: 'number', minimum: 0, maximum: 10000 },
+            },
+        },
+        proportions: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['width', 'height', 'depth'],
+            properties: {
+                width: { type: 'number', minimum: 0.01, maximum: 1 },
+                height: { type: 'number', minimum: 0.01, maximum: 1 },
+                depth: { type: 'number', minimum: 0.01, maximum: 1 },
+            },
+        },
+        symmetry: {
+            type: 'string',
+            enum: ['none', 'bilateral', 'rotational', 'fourfold'],
+        },
+        requiredFeatures: {
+            type: 'array',
+            maxItems: 16,
+            items: { type: 'string' },
+        },
+        palette: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['colors', 'allowTransparent'],
+            properties: {
+                colors: { type: 'array', maxItems: 12, items: { type: 'string' } },
+                allowTransparent: { type: 'boolean' },
+            },
+        },
+        complexity: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['level', 'detailBudget'],
+            properties: {
+                level: { type: 'string', enum: ['simple', 'moderate', 'detailed'] },
+                detailBudget: { type: 'number', minimum: 0, maximum: 100 },
+            },
+        },
+        seed: { type: 'integer', minimum: 0, maximum: 0xffffffff },
+    },
+} as const;
+
+async function createSemanticBrief(prompt: string): Promise<{
+    brief: BuildBrief;
+    source: 'openrouter' | 'deterministic-fallback';
+}> {
+    const fallback = createFallbackBuildBrief(prompt);
+    if (!OPENROUTER_KEY) return { brief: fallback, source: 'deterministic-fallback' };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+    try {
+        const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+            method: 'POST',
+            signal: controller.signal,
+            headers: {
+                Authorization: `Bearer ${OPENROUTER_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://yellobricks.xala.ai',
+                'X-Title': 'YelloBricks',
+            },
+            body: JSON.stringify({
+                model: AI_MODEL,
+                temperature: 0,
+                max_tokens: 700,
+                response_format: {
+                    type: 'json_schema',
+                    json_schema: {
+                        name: 'semantic_build_brief',
+                        strict: true,
+                        schema: BUILD_BRIEF_SCHEMA,
+                    },
+                },
+                messages: [
+                    {
+                        role: 'system',
+                        content:
+                            'Convert the request into one semantic LEGO BuildBrief. ' +
+                            'Return only the schema fields. Never produce brick placements, coordinates, layers, or instructions. ' +
+                            'Keep proportions normalized and ensure partBudget.max is not below partBudget.min.',
+                    },
+                    { role: 'user', content: prompt.slice(0, 1000) },
+                ],
+            }),
+        });
+        if (!res.ok) return { brief: fallback, source: 'deterministic-fallback' };
+        const json = await res.json();
+        const content: unknown = json.choices?.[0]?.message?.content;
+        let decoded: unknown = content;
+        if (typeof content === 'string') {
+            try {
+                decoded = JSON.parse(content.replace(/^```(?:json)?\s*|\s*```$/gi, ''));
+            } catch {
+                decoded = null;
+            }
+        }
+        if (!validateBuildBrief(decoded)) {
+            return { brief: fallback, source: 'deterministic-fallback' };
+        }
+        return { brief: parseBuildBrief(decoded, prompt), source: 'openrouter' };
+    } catch {
+        return { brief: fallback, source: 'deterministic-fallback' };
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+function toAIBuild(
+    plan: BuildPlan,
+    briefSource: 'openrouter' | 'deterministic-fallback',
+    inspiration?: AIBuild['inspiration'],
+): AIBuild {
     return {
-        id: crypto.randomUUID(),
-        name,
-        description,
+        id: plan.id,
+        name: inspiration ? `Original ${inspiration.name}-inspired build` : plan.name,
+        description: inspiration
+            ? `An original semantic approximation inspired by “${inspiration.name}”, planned only from your selected garage stock.`
+            : plan.description,
         ldrawText: plan.ldrawText,
-        steps: plan.steps.map((s) => ({
-            stepNum: s.step,
-            partNum: s.partNum,
-            colorId: s.colorId,
-            colorName: s.colorName,
-            x: s.x,
-            y: s.y,
-            z: s.z,
-            rotation: s.rot,
-            description: s.description,
-            loadBearing: s.loadBearing,
+        steps: plan.steps.map((step) => ({
+            stepNum: step.step,
+            partNum: step.partNum,
+            colorId: step.colorId,
+            colorName: step.colorName,
+            x: step.x,
+            y: step.y,
+            z: step.z,
+            rotation: step.rot,
+            description: step.description,
+            loadBearing: step.loadBearing,
         })),
         placed: plan.steps,
         totalParts: plan.steps.length,
@@ -276,8 +505,95 @@ Return JSON: {"name":"...","description":"1-2 sentences"}`,
         estimatedRigidityScore: plan.rigidityScore,
         compositeScore: plan.compositeScore,
         warnings: plan.warnings,
+        diagnostics: plan.diagnostics,
+        sources: plan.sources,
+        assemblySteps: plan.assemblySteps,
+        dependencyDag: plan.dependencyDag,
+        candidateRank: plan.candidateRank,
+        candidateSeed: plan.seed,
+        briefSource,
+        inspiration,
         generatedAt: new Date().toISOString(),
     };
+}
+
+/**
+ * Produces up to three local inventory-constrained candidates after one
+ * schema-validated semantic interpretation call.
+ */
+export async function generateAIBuildCandidatesAction(
+    inventory: SlimInventoryItem[],
+    prompt: string,
+    fidelityWeight: number,
+    age: number,
+    interpret = true,
+    inspiration?: AIBuild['inspiration'],
+): Promise<AIBuild[]> {
+    if (!inventory?.length) throw new Error('No parts in selected sets');
+    const semantic = interpret
+        ? await createSemanticBrief(prompt)
+        : { brief: createFallbackBuildBrief(prompt), source: 'deterministic-fallback' as const };
+    const plans = await planBuildCandidatesFromInventory(
+        inventory,
+        prompt,
+        fidelityWeight,
+        age,
+        semantic.brief,
+    );
+    return plans.slice(0, 3).map((plan) => toAIBuild(plan, semantic.source, inspiration));
+}
+
+/** Preserves the original API by returning the highest-ranked candidate. */
+export async function generateAIBuildAction(
+    inventory: SlimInventoryItem[],
+    prompt: string,
+    fidelityWeight: number,
+    age: number,
+    enrich = true,
+): Promise<AIBuild> {
+    const candidates = await generateAIBuildCandidatesAction(
+        inventory,
+        prompt,
+        fidelityWeight,
+        age,
+        enrich,
+    );
+    return candidates[0];
+}
+
+/**
+ * Generate an original, name-inspired assembly from selected garage stock.
+ * The target inventory and source instructions are never fetched here.
+ */
+export async function attemptCandidateRebuildAction(
+    setNum: string,
+    setName: string,
+    source: 'official' | 'rebrickable',
+    fidelityWeight: number,
+    age: number,
+    garageInventory: SlimInventoryItem[],
+    sourceUrl?: string,
+): Promise<AIBuild> {
+    if (!garageInventory?.length) {
+        throw new Error('No selected garage inventory is available for an original rebuild attempt.');
+    }
+    const [build] = await generateAIBuildCandidatesAction(
+        garageInventory,
+        `an original ${setName}-inspired ${source === 'rebrickable' ? 'community MOC' : 'set'} approximation`,
+        fidelityWeight,
+        age,
+        false,
+        {
+            kind: source === 'rebrickable' ? 'community-moc' : 'official-set',
+            id: setNum,
+            name: setName,
+            url: sourceUrl,
+            limitation: source === 'rebrickable'
+                ? 'The MOC inventory and designer instructions are restricted; they were not fetched or reproduced.'
+                : 'The set name is target inspiration; the selected garage inventory is the only build stock.',
+        },
+    );
+    return build;
 }
 
 // ---------------------------------------------------------------------------
@@ -285,17 +601,7 @@ Return JSON: {"name":"...","description":"1-2 sentences"}`,
 // ---------------------------------------------------------------------------
 export async function findSmartCandidatesAction(): Promise<Moc[]> { return []; }
 export async function getMocInventoryAction(setNum: string): Promise<InventoryPart[]> {
-    if (!API_KEY) throw new Error('API Key not configured');
-    let parts: InventoryPart[] = [];
-    let nextUrl: string | null = `${BASE_URL}/lego/mocs/${setNum}/parts/?page_size=1000`;
-    let page = 0;
-    while (nextUrl && page < 5) {
-        const res = await rbFetch(nextUrl);
-        if (!res || !res.ok) return [];
-        const data: { results: InventoryPart[]; next: string | null } = await res.json();
-        parts   = [...parts, ...data.results];
-        nextUrl = data.next ?? null;
-        page++;
-    }
-    return parts;
+    void setNum;
+    // Rebrickable restricts MOC inventories. Do not probe or imply availability.
+    return [];
 }

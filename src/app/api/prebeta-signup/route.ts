@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       );
     }
 
-    let parsed: any = null;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(text);
     } catch {
@@ -73,9 +73,16 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!parsed?.ok) {
+    const result = typeof parsed === 'object' && parsed !== null
+      ? parsed as { ok?: unknown; error?: unknown }
+      : {};
+    if (result.ok !== true) {
       return NextResponse.json(
-        { error: parsed?.error || 'Signup webhook returned ok=false.' },
+        {
+          error: typeof result.error === 'string'
+            ? result.error
+            : 'Signup webhook returned ok=false.',
+        },
         { status: 502 }
       );
     }

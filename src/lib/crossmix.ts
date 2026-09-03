@@ -64,10 +64,10 @@ function scoreCombo(
   agg: Map<string, { partNum: string; colorId: number; totalQty: number }>,
   fidelityWeight: number
 ): number {
-  let uniqueParts = agg.size;
+  const uniqueParts = agg.size;
   let totalParts = 0;
   let bulkParts = 0; // parts with qty >= 4
-  let colorDiversity = new Set<number>();
+  const colorDiversity = new Set<number>();
 
   for (const [, val] of agg) {
     totalParts += val.totalQty;

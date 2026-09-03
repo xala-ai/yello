@@ -7,7 +7,8 @@ import {
     getSetInventoryAction,
     findCandidateSetsAction,
     findRebrickableMocCandidatesAction,
-    generateAIBuildAction,
+    filterBuildCandidatesAction,
+    generateAIBuildCandidatesAction,
 } from '@/app/actions';
 import { syncGarageUpAction, syncGarageDownAction } from '@/app/actions/auth';
 import { aggregateInventory, checkBuildabilityTiered, scoreNewSetOverlap, slimInventoryForAI } from '@/lib/inventory';
@@ -64,8 +65,28 @@ export interface AIBuild {
     estimatedRigidityScore: number;
     compositeScore?: number;
     warnings?: string[];
+    diagnostics?: import('@/lib/planner').BuildQualityDiagnostics;
+    sources?: import('@/lib/planner').BuildSourceAttribution[];
+    assemblySteps?: import('@/lib/brickgpt/instructions').AssemblyStep[];
+    dependencyDag?: import('@/lib/brickgpt/instructions').AssemblyDependency[];
+    candidateRank?: number;
+    candidateSeed?: number;
+    briefSource?: 'openrouter' | 'deterministic-fallback';
+    inspiration?: {
+        kind: 'official-set' | 'community-moc';
+        id: string;
+        name: string;
+        url?: string;
+        limitation: string;
+    };
     generatedAt: string;
 }
+
+export type AIGenerationPhase =
+    | 'idle'
+    | 'preparing-inventory'
+    | 'interpreting-and-planning'
+    | 'saving-candidates';
 
 export interface CrossMixCombo {
     comboSetNums: string[];
@@ -103,6 +124,7 @@ interface GarageState {
     // Loading / error
     isLoading: boolean;
     isAILoading: boolean;
+    aiGenerationPhase: AIGenerationPhase;
     error: string | null;
 
     // Actions – Garage
@@ -114,7 +136,7 @@ interface GarageState {
     importSetsFromCSV: (setNums: string[]) => Promise<void>;
 
     // Actions – Mix Engine
-    findBuilds: () => Promise<void>;
+    findBuilds: (searchQuery?: string) => Promise<void>;
     findSmartBuilds: (searchQuery?: string) => Promise<void>;
 
     // Actions – AI Mode
@@ -157,6 +179,7 @@ export const useGarageStore = create<GarageState>()(
             smartSources: { ...DEFAULT_SMART_SOURCES },
             isLoading: false,
             isAILoading: false,
+            aiGenerationPhase: 'idle',
             error: null,
 
             // ── Profile ─────────────────────────────────────────────────────
@@ -237,7 +260,7 @@ export const useGarageStore = create<GarageState>()(
             },
 
             // ── Standard alternates (Rebrickable MOC alternates) ─────────────
-            findBuilds: async () => {
+            findBuilds: async (searchQuery?: string) => {
                 const { sets, selectedSetIds } = get();
                 const active = sets.filter((s) => selectedSetIds.includes(s.set_num));
                 if (active.length === 0) { set({ error: 'Select at least one set.' }); return; }
@@ -252,7 +275,21 @@ export const useGarageStore = create<GarageState>()(
                         } catch { /* skip */ }
                         await new Promise((r) => setTimeout(r, 150));
                     }
-                    set({ mocs: Array.from(uniqueMap.values()), isLoading: false });
+                    let matches = Array.from(uniqueMap.values());
+                    if (searchQuery?.trim()) {
+                        const acceptedIds = new Set(await filterBuildCandidatesAction(
+                            searchQuery,
+                            matches.map((moc) => ({
+                                id: `rebrickable:${moc.set_num}`,
+                                name: moc.name,
+                                source: 'rebrickable' as const,
+                            })),
+                        ));
+                        matches = matches.filter((moc) =>
+                            acceptedIds.has(`rebrickable:${moc.set_num}`),
+                        );
+                    }
+                    set({ mocs: matches, isLoading: false });
                 } catch (err) {
                     set({ isLoading: false, error: err instanceof Error ? err.message : 'Failed to find builds' });
                 }
@@ -295,6 +332,7 @@ export const useGarageStore = create<GarageState>()(
                     type WorkItem = {
                         set: LegoSet;
                         source: 'official' | 'rebrickable';
+                        semanticId: string;
                         parentSetNum?: string;
                         designerName?: string;
                         inventoryKey: string;
@@ -316,7 +354,12 @@ export const useGarageStore = create<GarageState>()(
                         });
                         for (const c of ranked.slice(0, 18)) {
                             if (sets.some((s) => s.set_num === c.set_num)) continue;
-                            work.push({ set: c, source: 'official', inventoryKey: c.set_num });
+                            work.push({
+                                set: c,
+                                source: 'official',
+                                semanticId: `official:${c.set_num}`,
+                                inventoryKey: c.set_num,
+                            });
                         }
                     }
 
@@ -347,6 +390,7 @@ export const useGarageStore = create<GarageState>()(
                                     last_modified_dt: '',
                                 },
                                 source: 'rebrickable',
+                                semanticId: `rebrickable:${m.set_num}`,
                                 parentSetNum: m.parent_set_num,
                                 designerName: m.designer_name,
                                 inventoryKey: m.parent_set_num,
@@ -354,10 +398,23 @@ export const useGarageStore = create<GarageState>()(
                         }
                     }
 
+                    let relevantWork = work;
+                    if (searchQuery?.trim()) {
+                        const acceptedIds = new Set(await filterBuildCandidatesAction(
+                            searchQuery,
+                            work.map((item) => ({
+                                id: item.semanticId,
+                                name: item.set.name,
+                                source: item.source,
+                            })),
+                        ));
+                        relevantWork = work.filter((item) => acceptedIds.has(item.semanticId));
+                    }
+
                     const invCache: Record<string, InventoryPart[]> = { ...get().setInventories };
                     const results: SmartSetMatch[] = [];
 
-                    for (const item of work) {
+                    for (const item of relevantWork) {
                         try {
                             let inv = invCache[item.inventoryKey];
                             if (!inv) {
@@ -413,7 +470,11 @@ export const useGarageStore = create<GarageState>()(
                 if (active.length === 0) { set({ error: 'Select at least one set.' }); return; }
                 if (!aiPrompt.trim()) { set({ error: 'Describe what you want to build.' }); return; }
 
-                set({ isAILoading: true, error: null });
+                set({
+                    isAILoading: true,
+                    aiGenerationPhase: 'preparing-inventory',
+                    error: null,
+                });
                 try {
                     const allInventories: InventoryPart[][] = [];
                     for (const s of active) {
@@ -422,10 +483,33 @@ export const useGarageStore = create<GarageState>()(
                     const masterBin = aggregateInventory(allInventories);
                     const slim = slimInventoryForAI(masterBin);
 
-                    const build = await generateAIBuildAction(slim, aiPrompt, fidelityWeight, age);
-                    set((state) => ({ aiBuilds: [build, ...state.aiBuilds], isAILoading: false }));
+                    set({ aiGenerationPhase: 'interpreting-and-planning' });
+                    const candidates = await generateAIBuildCandidatesAction(
+                        slim,
+                        aiPrompt,
+                        fidelityWeight,
+                        age,
+                    );
+                    set({ aiGenerationPhase: 'saving-candidates' });
+                    set((state) => {
+                        const seen = new Set<string>();
+                        const aiBuilds = [...candidates, ...state.aiBuilds].filter((build) => {
+                            if (!build.id || seen.has(build.id)) return false;
+                            seen.add(build.id);
+                            return true;
+                        });
+                        return {
+                            aiBuilds,
+                            isAILoading: false,
+                            aiGenerationPhase: 'idle',
+                        };
+                    });
                 } catch (err) {
-                    set({ isAILoading: false, error: err instanceof Error ? err.message : 'AI build generation failed' });
+                    set({
+                        isAILoading: false,
+                        aiGenerationPhase: 'idle',
+                        error: err instanceof Error ? err.message : 'AI build generation failed',
+                    });
                 }
             },
 
@@ -476,6 +560,7 @@ export const useGarageStore = create<GarageState>()(
                 fidelityWeight: s.fidelityWeight,
                 aiMode: s.aiMode,
                 aiPrompt: s.aiPrompt,
+                aiBuilds: s.aiBuilds,
                 matchRules: s.matchRules,
                 smartSources: s.smartSources,
             }),
@@ -484,11 +569,18 @@ export const useGarageStore = create<GarageState>()(
                     state.error = null;
                     state.isLoading = false;
                     state.isAILoading = false;
+                    state.aiGenerationPhase = 'idle';
                     const band = snapAgeToBand(state.age ?? 18);
                     state.age = band.age;
                     if (state.fidelityWeight == null) state.fidelityWeight = band.fidelityWeight;
                     state.matchRules = { ...DEFAULT_MATCH_RULES, ...(state.matchRules || {}) };
                     state.smartSources = { ...DEFAULT_SMART_SOURCES, ...(state.smartSources || {}) };
+                    const seenBuildIds = new Set<string>();
+                    state.aiBuilds = (state.aiBuilds ?? []).filter((build) => {
+                        if (!build?.id || seenBuildIds.has(build.id)) return false;
+                        seenBuildIds.add(build.id);
+                        return true;
+                    });
                 }
             },
         }

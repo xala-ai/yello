@@ -1,8 +1,9 @@
 'use client';
 
 import { Moc } from '@/types/rebrickable';
-import { ExternalLink, User, Calendar } from 'lucide-react';
+import { ExternalLink, User, Calendar, BookOpen } from 'lucide-react';
 import Image from 'next/image';
+import { RebuildAttemptButton } from './RebuildAttemptButton';
 
 interface MocCardProps {
     moc: Moc;
@@ -43,6 +44,27 @@ export function MocCard({ moc }: MocCardProps) {
                         <Calendar className="w-4 h-4" />
                         <span>{moc.year} • {moc.num_parts} parts</span>
                     </div>
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                        <a
+                            href={moc.moc_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="py-2 px-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-gray-50"
+                        >
+                            <BookOpen className="w-3.5 h-3.5" /> Rebrickable
+                        </a>
+                        <RebuildAttemptButton
+                            setNum={moc.set_num}
+                            setName={moc.name}
+                            source="rebrickable"
+                            sourceUrl={moc.moc_url}
+                            className="py-2 px-2 rounded-lg bg-yellow-400 text-black text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-yellow-500 disabled:opacity-60"
+                        />
+                    </div>
+                    <p className="text-[10px] text-gray-400">
+                        Creates an original, name-inspired model from your selected garage stock.
+                        The MOC inventory and designer instructions are not fetched or reproduced.
+                    </p>
                 </div>
             </div>
         </div>

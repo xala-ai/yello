@@ -3,8 +3,9 @@
 import Image from 'next/image';
 import { ExternalLink, AlertCircle, BookOpen, Sparkles, Shield, Eye, Layers } from 'lucide-react';
 import { usesAdvancedScoreLabels } from '@/types/rebrickable';
-import { SmartSetMatch } from '@/store/garage';
+import type { SmartSetMatch } from '@/store/garage';
 import { useGarageStore } from '@/store/garage';
+import { RebuildAttemptButton } from './RebuildAttemptButton';
 import { useState } from 'react';
 
 interface SmartSetCardProps {
@@ -102,7 +103,7 @@ export function SmartSetCard({ set }: SmartSetCardProps) {
                 {isMoc && (
                     <p className="text-[11px] text-gray-600 -mt-2">
                         {set.designerName ? `by ${set.designerName}` : 'Community build'}
-                        {set.parentSetNum ? ` · scored vs ${set.parentSetNum}` : ''}
+                        {set.parentSetNum ? ` · proxy score from parent set ${set.parentSetNum}` : ''}
                     </p>
                 )}
 
@@ -197,6 +198,28 @@ export function SmartSetCard({ set }: SmartSetCardProps) {
                             )}
                         </div>
                     )}
+
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                        <a
+                            href={primaryUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="py-2 px-2 rounded-lg border border-gray-300 bg-white text-gray-900 font-semibold flex items-center justify-center gap-1.5 hover:bg-gray-50"
+                        >
+                            <BookOpen className="w-3.5 h-3.5" /> {primaryLabel}
+                        </a>
+                        <RebuildAttemptButton
+                            setNum={set.set_num}
+                            setName={set.name}
+                            source={isMoc ? 'rebrickable' : 'official'}
+                            sourceUrl={primaryUrl}
+                            className="py-2 px-2 rounded-lg bg-yellow-400 text-black font-bold flex items-center justify-center gap-1.5 hover:bg-yellow-500 disabled:opacity-60"
+                        />
+                    </div>
+                    <p className="text-[10px] text-gray-400">
+                        Creates an original, name-inspired model using only your selected garage stock.
+                        {isMoc && ' Restricted MOC inventory and instructions are not fetched.'}
+                    </p>
                 </div>
             </div>
         </div>
