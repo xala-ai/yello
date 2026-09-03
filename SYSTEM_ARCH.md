@@ -38,7 +38,7 @@ Composite score blends **fidelity** and **rigidity** via `fidelityWeight` (auto 
 
 ## Env (Netlify / local)
 ```
-REBRICKABLE_API_KEY=
+REBRICKABLE_API_KEY=          # server-only; never NEXT_PUBLIC_ (leaks to the browser)
 OPENROUTER_API_KEY=          # project key (see agent-secrets/yellobricks.env)
 AI_BUILD_MODEL=anthropic/claude-opus-4.6
 AUTH_SECRET=

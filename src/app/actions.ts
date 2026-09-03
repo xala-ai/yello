@@ -5,7 +5,7 @@ import type { AIBuild } from '@/store/garage';
 import { planBuildFromInventory } from '@/lib/planner';
 
 const BASE_URL = 'https://rebrickable.com/api/v3';
-const API_KEY  = process.env.REBRICKABLE_API_KEY || process.env.NEXT_PUBLIC_REBRICKABLE_API_KEY;
+const API_KEY  = process.env.REBRICKABLE_API_KEY;
 
 const rbHeaders = {
     'Authorization': `key ${API_KEY}`,
