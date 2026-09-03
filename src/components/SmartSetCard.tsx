@@ -1,20 +1,20 @@
 'use client';
 
 import Image from 'next/image';
-import { ExternalLink, PieChart, AlertCircle, BookOpen, Sparkles, Shield, Eye, Layers } from 'lucide-react';
-import { LegoSet } from '@/types/rebrickable';
-import { TieredMatchResult } from '@/types/rebrickable';
+import { ExternalLink, AlertCircle, BookOpen, Sparkles, Shield, Eye, Layers } from 'lucide-react';
+import { usesAdvancedScoreLabels } from '@/types/rebrickable';
+import { SmartSetMatch } from '@/store/garage';
+import { useGarageStore } from '@/store/garage';
 import { useState } from 'react';
 
 interface SmartSetCardProps {
-    set: LegoSet & { matchResult?: TieredMatchResult; noveltyScore?: number };
+    set: SmartSetMatch;
 }
 
-// Tier pill colours
-const TIER_COLOURS = {
-    T1: 'bg-green-100 text-green-800',
-    T2: 'bg-yellow-100 text-yellow-800',
-    T3: 'bg-orange-100 text-orange-800',
+const MATCH_PILLS = {
+    exact: 'bg-green-100 text-green-800',
+    colour: 'bg-yellow-100 text-yellow-800',
+    swap: 'bg-orange-100 text-orange-800',
 };
 
 function ScoreBar({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
@@ -35,28 +35,36 @@ function ScoreBar({ label, value, icon }: { label: string; value: number; icon: 
 
 export function SmartSetCard({ set }: SmartSetCardProps) {
     const [showMissing, setShowMissing] = useState(false);
+    const age = useGarageStore((s) => s.age);
+    const advancedLabels = usesAdvancedScoreLabels(age);
     const mr = set.matchResult;
     const matchPct = mr?.percentage ?? 0;
     const composite = mr?.compositeScore ?? matchPct;
+    const isMoc = set.source === 'rebrickable' || set.set_num.startsWith('MOC-');
 
     let badgeColor = 'bg-red-100 text-red-700';
     if (composite >= 90) badgeColor = 'bg-green-100 text-green-700';
     else if (composite >= 70) badgeColor = 'bg-yellow-100 text-yellow-700';
 
     const legoInstrUrl = `https://www.lego.com/service/buildinginstructions/${set.set_num.split('-')[0]}`;
+    const primaryUrl = isMoc ? set.set_url : legoInstrUrl;
+    const primaryLabel = isMoc ? 'Rebrickable' : 'Instructions';
 
-    // Tier breakdown
     const tiers = mr?.tiers;
-    const t1 = tiers ? Math.round((tiers.exactCount / tiers.totalNeeded) * 100) : 0;
-    const t2 = tiers ? Math.round((tiers.colorSwapCount / tiers.totalNeeded) * 100) : 0;
-    const t3 = tiers ? Math.round((tiers.structuralSubCount / tiers.totalNeeded) * 100) : 0;
+    const exactPct = tiers ? Math.round((tiers.exactCount / tiers.totalNeeded) * 100) : 0;
+    const colourPct = tiers ? Math.round((tiers.colorSwapCount / tiers.totalNeeded) * 100) : 0;
+    const swapPct = tiers ? Math.round((tiers.structuralSubCount / tiers.totalNeeded) * 100) : 0;
 
     return (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all group flex flex-col h-full relative">
-            {/* Composite score badge */}
             <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
                 <div className={`px-3 py-1 rounded-full text-xs font-black shadow-sm ${badgeColor}`}>
                     {composite} score
+                </div>
+                <div className={`px-2 py-0.5 rounded-full text-[10px] font-semibold shadow-sm ${
+                    isMoc ? 'bg-sky-100 text-sky-800' : 'bg-gray-900 text-white'
+                }`}>
+                    {isMoc ? 'Rebrickable MOC' : 'Official LEGO'}
                 </div>
                 {set.noveltyScore !== undefined && set.noveltyScore > 30 && (
                     <div className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 shadow-sm flex items-center gap-1">
@@ -66,17 +74,21 @@ export function SmartSetCard({ set }: SmartSetCardProps) {
             </div>
 
             <div className="relative aspect-video w-full bg-gray-50 overflow-hidden">
-                <Image
-                    src={set.set_img_url}
-                    alt={set.name}
-                    fill
-                    className="object-cover transition-transform group-hover:scale-105"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                />
+                {set.set_img_url ? (
+                    <Image
+                        src={set.set_img_url}
+                        alt={set.name}
+                        fill
+                        className="object-cover transition-transform group-hover:scale-105"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No image</div>
+                )}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4 gap-2">
-                    <a href={legoInstrUrl} target="_blank" rel="noopener noreferrer"
+                    <a href={primaryUrl} target="_blank" rel="noopener noreferrer"
                         className="flex-1 bg-white/90 hover:bg-white text-gray-900 font-black text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-2">
-                        <BookOpen className="w-4 h-4" /> Instructions
+                        <BookOpen className="w-4 h-4" /> {primaryLabel}
                     </a>
                     <a href={set.set_url} target="_blank" rel="noopener noreferrer"
                         className="bg-white/90 hover:bg-white text-gray-900 text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-2">
@@ -87,21 +99,45 @@ export function SmartSetCard({ set }: SmartSetCardProps) {
 
             <div className="p-4 flex flex-col flex-1 gap-3">
                 <h3 className="font-bold text-gray-900 line-clamp-2 text-sm" title={set.name}>{set.name}</h3>
+                {isMoc && (
+                    <p className="text-[11px] text-gray-600 -mt-2">
+                        {set.designerName ? `by ${set.designerName}` : 'Community build'}
+                        {set.parentSetNum ? ` · scored vs ${set.parentSetNum}` : ''}
+                    </p>
+                )}
 
-                {/* Tier breakdown pills */}
                 {tiers && tiers.totalNeeded > 0 && (
                     <div className="flex flex-wrap gap-1">
-                        {t1 > 0 && <span className={`px-2 py-0.5 rounded text-xs font-semibold ${TIER_COLOURS.T1}`}>T1 exact {t1}%</span>}
-                        {t2 > 0 && <span className={`px-2 py-0.5 rounded text-xs font-semibold ${TIER_COLOURS.T2}`}>T2 color {t2}%</span>}
-                        {t3 > 0 && <span className={`px-2 py-0.5 rounded text-xs font-semibold ${TIER_COLOURS.T3}`}>T3 sub {t3}%</span>}
+                        {exactPct > 0 && (
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${MATCH_PILLS.exact}`}>
+                                Exact match {exactPct}%
+                            </span>
+                        )}
+                        {colourPct > 0 && (
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${MATCH_PILLS.colour}`}>
+                                Same shape, any colour {colourPct}%
+                            </span>
+                        )}
+                        {swapPct > 0 && (
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${MATCH_PILLS.swap}`}>
+                                Brick swaps {swapPct}%
+                            </span>
+                        )}
                     </div>
                 )}
 
-                {/* Fidelity / rigidity score bars */}
                 {mr && (
                     <div className="space-y-1.5">
-                        <ScoreBar label="Fidelity"  value={mr.fidelityScore}  icon={<Eye className="w-3 h-3" />} />
-                        <ScoreBar label="Rigidity"  value={mr.rigidityScore}  icon={<Shield className="w-3 h-3" />} />
+                        <ScoreBar
+                            label={advancedLabels ? 'Fidelity' : 'Looks right'}
+                            value={mr.fidelityScore}
+                            icon={<Eye className="w-3 h-3" />}
+                        />
+                        <ScoreBar
+                            label={advancedLabels ? 'Rigidity' : 'Holds together'}
+                            value={mr.rigidityScore}
+                            icon={<Shield className="w-3 h-3" />}
+                        />
                     </div>
                 )}
 
@@ -118,7 +154,7 @@ export function SmartSetCard({ set }: SmartSetCardProps) {
                         >
                             <AlertCircle className="w-3 h-3" />
                             {showMissing ? 'Hide' : 'Show'} missing ({mr.missing.length})
-                            {mr.structuralSubs.length > 0 && ` + ${mr.structuralSubs.length} subs`}
+                            {mr.structuralSubs.length > 0 && ` + ${mr.structuralSubs.length} swaps`}
                         </button>
                     )}
 
@@ -126,7 +162,7 @@ export function SmartSetCard({ set }: SmartSetCardProps) {
                         <div className="mt-1 p-2 bg-gray-50 rounded text-xs max-h-40 overflow-y-auto border border-gray-100 space-y-2">
                             {mr.colorSwaps.length > 0 && (
                                 <div>
-                                    <p className="font-bold text-yellow-700 mb-1">Color swaps (T2)</p>
+                                    <p className="font-bold text-yellow-700 mb-1">Same shape, different colour</p>
                                     {mr.colorSwaps.map((p, i) => (
                                         <div key={`swap-${i}`} className="flex justify-between py-0.5 border-b border-gray-100 last:border-0">
                                             <span className="truncate flex-1">{p.part.name}</span>
@@ -137,18 +173,20 @@ export function SmartSetCard({ set }: SmartSetCardProps) {
                             )}
                             {mr.structuralSubs.length > 0 && (
                                 <div>
-                                    <p className="font-bold text-orange-700 mb-1">Structural subs (T3)</p>
+                                    <p className="font-bold text-orange-700 mb-1">Brick swaps (e.g. 2×6 ← two 2×3s)</p>
                                     {mr.structuralSubs.map((s, i) => (
                                         <div key={`sub-${i}`} className="py-0.5 border-b border-gray-100 last:border-0">
                                             <span className="truncate block">{s.required.part.name} ×{s.required.quantity}</span>
-                                            <span className="text-gray-400 text-[10px]">rigidity penalty: {Math.round(s.rigidityPenalty * 100)}%</span>
+                                            <span className="text-gray-400 text-[10px]">
+                                                wobblier by ~{Math.round(s.rigidityPenalty * 100)}%
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
                             )}
                             {mr.missing.length > 0 && (
                                 <div>
-                                    <p className="font-bold text-red-700 mb-1">Truly missing</p>
+                                    <p className="font-bold text-red-700 mb-1">Still need these</p>
                                     {mr.missing.map((p, i) => (
                                         <div key={`miss-${i}`} className="flex justify-between py-0.5 border-b border-gray-100 last:border-0">
                                             <span className="truncate flex-1">{p.part.name} ({p.color.name})</span>

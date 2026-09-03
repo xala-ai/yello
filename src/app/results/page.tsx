@@ -13,6 +13,12 @@ import clsx from 'clsx';
 import { SuggestionBar } from '@/components/SuggestionBar';
 import { ModelViewerZone } from '@/components/ModelViewerZone';
 import { InstructionViewer } from '@/components/InstructionViewer';
+import { CrossScaleMixDialog } from '@/components/CrossScaleMixDialog';
+import { selectionHasMixedScales } from '@/lib/duplo';
+import { useRouter } from 'next/navigation';
+import { AGE_BANDS, ageBandIndex, usesAdvancedScoreLabels } from '@/types/rebrickable';
+
+const CROSS_SCALE_ACK_KEY = 'yellobricks-cross-scale-ack';
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -39,7 +45,7 @@ function SliderRow({
     );
 }
 
-function AIBuildCard({ build }: { build: import('@/store/garage').AIBuild }) {
+function AIBuildCard({ build, advancedLabels }: { build: import('@/store/garage').AIBuild; advancedLabels: boolean }) {
     const [expanded, setExpanded] = useState(false);
     const [viewer, setViewer] = useState(false);
     const placed = build.placed ?? build.steps.map((s) => ({
@@ -47,6 +53,14 @@ function AIBuildCard({ build }: { build: import('@/store/garage').AIBuild }) {
         x: s.x, y: s.y, z: s.z, rot: s.rotation, step: s.stepNum,
         description: s.description, loadBearing: !!s.loadBearing,
     }));
+    const layerCount = Math.max(1, ...build.steps.map((step) => step.stepNum));
+    const groupedSteps = Array.from({ length: layerCount }, (_, index) => {
+        const stepNum = index + 1;
+        const parts = build.steps.filter((step) => step.stepNum === stepNum);
+        return { stepNum, parts };
+    });
+    const fidelityLabel = advancedLabels ? 'Fidelity' : 'Looks right';
+    const rigidityLabel = advancedLabels ? 'Rigidity' : 'Holds together';
     return (
         <div className="bg-white border border-gray-100 rounded-xl p-4 flex flex-col gap-3">
             <div className="flex items-start justify-between gap-2">
@@ -56,7 +70,7 @@ function AIBuildCard({ build }: { build: import('@/store/garage').AIBuild }) {
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1">
                     <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded font-semibold">AI</span>
-                    <span className="text-xs text-gray-400">{build.totalParts} steps</span>
+                    <span className="text-xs text-gray-400">{build.totalParts} bricks · {layerCount} steps</span>
                 </div>
             </div>
 
@@ -64,12 +78,12 @@ function AIBuildCard({ build }: { build: import('@/store/garage').AIBuild }) {
                 <div className="bg-gray-50 rounded p-2 text-center">
                     <Eye className="w-4 h-4 mx-auto text-blue-500 mb-0.5" />
                     <div className="font-bold">{build.estimatedFidelityScore}</div>
-                    <div className="text-gray-500">Fidelity</div>
+                    <div className="text-gray-500">{fidelityLabel}</div>
                 </div>
                 <div className="bg-gray-50 rounded p-2 text-center">
                     <Shield className="w-4 h-4 mx-auto text-green-500 mb-0.5" />
                     <div className="font-bold">{build.estimatedRigidityScore}</div>
-                    <div className="text-gray-500">Rigidity</div>
+                    <div className="text-gray-500">{rigidityLabel}</div>
                 </div>
             </div>
 
@@ -78,16 +92,16 @@ function AIBuildCard({ build }: { build: import('@/store/garage').AIBuild }) {
                 className="text-xs text-blue-600 flex items-center gap-1 hover:underline"
             >
                 <ChevronRight className={clsx('w-3 h-3 transition-transform', expanded && 'rotate-90')} />
-                {expanded ? 'Hide' : 'Show'} build steps ({build.steps.length})
+                {expanded ? 'Hide' : 'Show'} build steps ({layerCount})
             </button>
 
             {expanded && (
                 <ol className="text-xs space-y-1 max-h-60 overflow-y-auto border border-gray-100 rounded p-2 bg-gray-50">
-                    {build.steps.map((step) => (
-                        <li key={step.stepNum} className="flex gap-2 py-0.5 border-b border-gray-100 last:border-0">
-                            <span className="text-gray-400 w-5 shrink-0 text-right">{step.stepNum}.</span>
-                            <span className="flex-1">{step.description}</span>
-                            <span className="text-gray-400 shrink-0">{step.colorName}</span>
+                    {groupedSteps.map(({ stepNum, parts }) => (
+                        <li key={stepNum} className="flex gap-2 py-0.5 border-b border-gray-100 last:border-0">
+                            <span className="text-gray-400 w-5 shrink-0 text-right">{stepNum}.</span>
+                            <span className="flex-1">{parts[0]?.description ?? 'Add next layer'}</span>
+                            <span className="text-gray-400 shrink-0">{parts.length} bricks</span>
                         </li>
                     ))}
                 </ol>
@@ -99,7 +113,12 @@ function AIBuildCard({ build }: { build: import('@/store/garage').AIBuild }) {
             </button>
             <p className="text-[10px] text-gray-300">Generated {new Date(build.generatedAt).toLocaleString()}</p>
             {viewer && (
-                <InstructionViewer name={build.name} steps={placed} onClose={() => setViewer(false)} />
+                <InstructionViewer
+                    name={build.name}
+                    steps={placed}
+                    ldrawText={build.ldrawText}
+                    onClose={() => setViewer(false)}
+                />
             )}
         </div>
     );
@@ -112,35 +131,56 @@ function AIBuildCard({ build }: { build: import('@/store/garage').AIBuild }) {
 export default function ResultsPage() {
     const {
         sets, mocs, smartMatches, aiBuilds, aiMode, aiPrompt, crossMixes,
-        age, fidelityWeight,
+        age, fidelityWeight, selectedSetIds, setInventories, matchRules, smartSources,
         findBuilds, findSmartBuilds, generateAIBuilds, findCrossMixes,
-        setAIMode, setAIPrompt, setAge, setFidelityWeight,
+        setAIMode, setAIPrompt, setAge, setFidelityWeight, setMatchRules, setSmartSources,
         isLoading, isAILoading, error,
     } = useGarageStore();
 
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<'strict' | 'smart' | 'ai' | 'cross'>('strict');
     const [isHydrated, setIsHydrated] = useState(false);
-    const [minMatch, setMinMatch] = useState(0);
+    const [minMatch, setMinMatch] = useState(30);
     const [sortBy, setSortBy] = useState<'composite' | 'percentage' | 'parts' | 'novelty'>('composite');
+    const [crossScaleGate, setCrossScaleGate] = useState(false);
+    const [crossScaleOk, setCrossScaleOk] = useState(false);
+    const [smartQuery, setSmartQuery] = useState<string | undefined>();
 
     useEffect(() => { useGarageStore.persist.rehydrate(); setIsHydrated(true); }, []);
 
     useEffect(() => {
-        if (isHydrated && sets.length > 0 && mocs.length === 0) findBuilds();
-    }, [isHydrated, sets.length, mocs.length, findBuilds]);
+        if (!isHydrated) return;
+        const mixed = selectionHasMixedScales(sets, selectedSetIds, setInventories);
+        if (mixed && sessionStorage.getItem(CROSS_SCALE_ACK_KEY) !== '1') {
+            setCrossScaleGate(true);
+            setCrossScaleOk(false);
+            return;
+        }
+        setCrossScaleOk(true);
+    }, [isHydrated, sets, selectedSetIds, setInventories]);
+
+    useEffect(() => {
+        if (isHydrated && crossScaleOk && sets.length > 0 && mocs.length === 0) findBuilds();
+    }, [isHydrated, crossScaleOk, sets.length, mocs.length, findBuilds]);
 
     const handleRefresh = () => {
         if (activeTab === 'strict') findBuilds();
-        else if (activeTab === 'smart') findSmartBuilds();
+        else if (activeTab === 'smart') findSmartBuilds(smartQuery);
     };
 
     const handleSuggestionSearch = (query: string) => {
         setActiveTab('smart');
+        setSmartQuery(query);
         findSmartBuilds(query);
     };
 
     const filteredSmartMatches = smartMatches
-        .filter((m) => (m.matchResult?.compositeScore ?? 0) >= minMatch)
+        .filter((m) => {
+            if ((m.matchResult?.compositeScore ?? 0) < minMatch) return false;
+            if (m.source === 'official' && smartSources?.official === false) return false;
+            if (m.source === 'rebrickable' && smartSources?.rebrickable === false) return false;
+            return true;
+        })
         .sort((a, b) => {
             if (sortBy === 'composite')   return (b.matchResult?.compositeScore  ?? 0) - (a.matchResult?.compositeScore  ?? 0);
             if (sortBy === 'percentage')  return (b.matchResult?.percentage      ?? 0) - (a.matchResult?.percentage      ?? 0);
@@ -154,8 +194,19 @@ export default function ResultsPage() {
 
     if (!isHydrated) return null;
 
+    const advancedLabels = usesAdvancedScoreLabels(age);
+
     return (
         <main className="min-h-screen bg-gray-50 p-8">
+            <CrossScaleMixDialog
+                open={crossScaleGate}
+                onCancel={() => router.push('/')}
+                onContinue={() => {
+                    sessionStorage.setItem(CROSS_SCALE_ACK_KEY, '1');
+                    setCrossScaleGate(false);
+                    setCrossScaleOk(true);
+                }}
+            />
             <div className="max-w-7xl mx-auto">
 
                 {/* Header */}
@@ -183,24 +234,63 @@ export default function ResultsPage() {
                 {/* Age + fidelity/rigidity controls */}
                 <div className="bg-white border border-gray-100 rounded-xl p-4 mb-6 space-y-3">
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Builder profile</p>
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-3 text-sm">
+                            <span className="flex items-center gap-1 text-gray-500 w-28 shrink-0">
+                                <User className="w-3.5 h-3.5" />Age
+                            </span>
+                            <input
+                                type="range"
+                                min={0}
+                                max={AGE_BANDS.length - 1}
+                                step={1}
+                                value={ageBandIndex(age)}
+                                onChange={(e) => setAge(AGE_BANDS[Number(e.target.value)].age)}
+                                className="flex-1 accent-yellow-500 h-1.5"
+                            />
+                            <span className="w-14 text-right font-semibold text-gray-700 shrink-0">
+                                {AGE_BANDS[ageBandIndex(age)].label}
+                            </span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-gray-400 pl-28 pr-14">
+                            {AGE_BANDS.map((b) => (
+                                <button
+                                    key={b.id}
+                                    type="button"
+                                    onClick={() => setAge(b.age)}
+                                    className={ageBandIndex(age) === AGE_BANDS.findIndex((x) => x.id === b.id)
+                                        ? 'text-yellow-700 font-bold'
+                                        : 'hover:text-gray-600'}
+                                >
+                                    {b.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <SliderRow
-                        label="Age"
-                        min={3} max={80} value={age}
-                        icon={<User className="w-3.5 h-3.5" />}
-                        onChange={setAge}
-                        format={(v) => `${v}y`}
-                    />
-                    <SliderRow
-                        label="Fidelity"
+                        label={advancedLabels ? 'Fidelity' : 'Looks'}
                         min={0} max={1} step={0.05} value={fidelityWeight}
                         icon={<Eye className="w-3.5 h-3.5" />}
                         onChange={setFidelityWeight}
-                        format={(v) => v < 0.35 ? 'Rigid' : v < 0.65 ? 'Balanced' : 'Fidelity'}
+                        format={(v) => {
+                            if (advancedLabels) {
+                                return v < 0.35 ? 'Rigidity' : v < 0.65 ? 'Balanced' : 'Fidelity';
+                            }
+                            return v < 0.35 ? 'Sturdy' : v < 0.65 ? 'Balanced' : 'Looks right';
+                        }}
                     />
                     <p className="text-[11px] text-gray-400">
-                        {fidelityWeight < 0.35 ? 'Structural rigidity prioritised — great for young builders.'
-                         : fidelityWeight < 0.65 ? 'Balanced: looks decent and holds together.'
-                         : 'High fidelity: maximise visual accuracy, some subs may be less rigid.'}
+                        {advancedLabels
+                            ? (fidelityWeight < 0.35
+                                ? 'Rigidity prioritised — favour substitutions that stay structurally sound.'
+                                : fidelityWeight < 0.65
+                                    ? 'Balanced fidelity and rigidity.'
+                                    : 'Fidelity prioritised — favour looks even if some swaps are less rigid.')
+                            : (fidelityWeight < 0.35
+                                ? 'Prefer sturdy builds that won’t wobble — great for younger builders.'
+                                : fidelityWeight < 0.65
+                                    ? 'Balanced: looks decent and holds together.'
+                                    : 'Prefer builds that look just like the picture (may use wobblier swaps).')}
                     </p>
                 </div>
 
@@ -224,7 +314,7 @@ export default function ResultsPage() {
                             <button key={id}
                                 onClick={() => {
                                     setActiveTab(id);
-                                    if (id === 'smart' && smartMatches.length === 0) findSmartBuilds();
+                                    if (id === 'smart' && smartMatches.length === 0) findSmartBuilds(smartQuery);
                                     if (id === 'cross') findCrossMixes();
                                     if (id === 'ai') setAIMode(true);
                                     else setAIMode(false);
@@ -242,29 +332,108 @@ export default function ResultsPage() {
 
                     {/* Filters (Smart Mix only) */}
                     {activeTab === 'smart' && (
-                        <div className="flex flex-wrap items-center gap-3 pb-3 text-sm">
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-gray-500">Min score:</span>
-                                <select value={minMatch} onChange={(e) => setMinMatch(Number(e.target.value))}
-                                    className="bg-white border border-gray-200 rounded px-2 py-1 text-gray-700">
-                                    {[0, 30, 50, 70, 90].map((v) => (
-                                        <option key={v} value={v}>{v}+</option>
-                                    ))}
-                                </select>
+                        <div className="flex flex-col items-stretch sm:items-end gap-2 pb-3 text-sm w-full sm:w-auto">
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSmartSources({ official: !smartSources.official });
+                                        findSmartBuilds(smartQuery);
+                                    }}
+                                    className={clsx(
+                                        'text-xs px-2.5 py-1.5 rounded-md border font-medium transition-colors',
+                                        smartSources.official
+                                            ? 'bg-yellow-400 border-yellow-500 text-black'
+                                            : 'bg-white border-gray-300 text-gray-800 hover:bg-gray-50',
+                                    )}
+                                >
+                                    Official LEGO
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSmartSources({ rebrickable: !smartSources.rebrickable });
+                                        findSmartBuilds(smartQuery);
+                                    }}
+                                    className={clsx(
+                                        'text-xs px-2.5 py-1.5 rounded-md border font-medium transition-colors',
+                                        smartSources.rebrickable
+                                            ? 'bg-yellow-400 border-yellow-500 text-black'
+                                            : 'bg-white border-gray-300 text-gray-800 hover:bg-gray-50',
+                                    )}
+                                >
+                                    Rebrickable MOCs
+                                </button>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-gray-500">Sort:</span>
-                                <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                                    className="bg-white border border-gray-200 rounded px-2 py-1 text-gray-700">
-                                    <option value="composite">Best overall</option>
-                                    <option value="percentage">Coverage %</option>
-                                    <option value="parts">Part count</option>
-                                    <option value="novelty">Best to buy (novelty)</option>
-                                </select>
+                            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-700">
+                                <label className="inline-flex items-center gap-1.5 cursor-default opacity-80" title="Always on">
+                                    <input type="checkbox" checked readOnly className="accent-yellow-500" />
+                                    Match bricks exactly
+                                </label>
+                                <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="accent-yellow-500"
+                                        checked={matchRules.ignoreColor}
+                                        onChange={(e) => {
+                                            setMatchRules({ ignoreColor: e.target.checked });
+                                            findSmartBuilds(smartQuery);
+                                        }}
+                                    />
+                                    Same shape, ignore colour
+                                </label>
+                                <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="accent-yellow-500"
+                                        checked={matchRules.allowSubstitution}
+                                        onChange={(e) => {
+                                            setMatchRules({ allowSubstitution: e.target.checked });
+                                            findSmartBuilds(smartQuery);
+                                        }}
+                                    />
+                                    Allow brick swaps (2×6 = two 2×3s)
+                                </label>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-700">Min score:</span>
+                                    <select value={minMatch} onChange={(e) => setMinMatch(Number(e.target.value))}
+                                        className="bg-white border border-gray-300 rounded px-2 py-1 text-gray-900">
+                                        {[0, 30, 50, 70, 90].map((v) => (
+                                            <option key={v} value={v}>{v}+</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-700">Sort:</span>
+                                    <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                                        className="bg-white border border-gray-300 rounded px-2 py-1 text-gray-900">
+                                        <option value="composite">Best overall</option>
+                                        <option value="percentage">Coverage %</option>
+                                        <option value="parts">Part count</option>
+                                        <option value="novelty">Best to buy (novelty)</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     )}
                 </div>
+
+                <p className="text-sm text-gray-600 mb-6 -mt-2 max-w-3xl">
+                    {activeTab === 'strict' && (
+                        <>Official and community <span className="font-semibold text-gray-800">alternate builds</span> listed for your selected sets on Rebrickable — same set number, different designs.</>
+                    )}
+                    {activeTab === 'smart' && (
+                        <>Search <span className="font-semibold text-gray-800">Official LEGO</span> sets and/or <span className="font-semibold text-gray-800">Rebrickable</span> community alternates. We pull topic hits (e.g. “forklift”), then keep what you can mostly build from your bricks — not giant sets that are mostly new parts.</>
+                    )}
+                    {activeTab === 'cross' && (
+                        <>Useful combos of <span className="font-semibold text-gray-800">2–3 sets you already own</span> — which piles to dump together for the strongest mixed bin, then run Smart Mix on that combo.</>
+                    )}
+                    {activeTab === 'ai' && (
+                        <>Describe a build; we plan a <span className="font-semibold text-gray-800">new model from only your garage bricks</span>, with step instructions and a 3D viewer — not a Rebrickable link-out.</>
+                    )}
+                </p>
 
                 {error && <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 text-sm">{error}</div>}
 
@@ -282,15 +451,15 @@ export default function ResultsPage() {
                 {/* ── Smart Mix ── */}
                 {activeTab === 'smart' && (
                     isLoading
-                        ? <Spinner text="Crunching parts across all tiers…" />
+                        ? <Spinner text="Matching your bricks…" />
                         : filteredSmartMatches.length > 0
                             ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {filteredSmartMatches.map((m) => <SmartSetCard key={m.set_num} set={m as any} />)}
+                                {filteredSmartMatches.map((m) => <SmartSetCard key={`${m.source ?? 'x'}-${m.set_num}`} set={m} />)}
                               </div>
                             : <EmptyState
                                 label="No matches at current score threshold."
                                 hint="Lower the minimum score or add more sets."
-                                action={{ label: 'Generate Ideas', onClick: () => findSmartBuilds() }}
+                                action={{ label: 'Generate Ideas', onClick: () => findSmartBuilds(smartQuery) }}
                               />
                 )}
 
@@ -314,7 +483,7 @@ export default function ResultsPage() {
                                             className="mt-3 text-xs font-semibold text-yellow-700 hover:underline"
                                             onClick={() => {
                                                 setActiveTab('smart');
-                                                findSmartBuilds();
+                                                findSmartBuilds(smartQuery);
                                             }}
                                         >
                                             Run Smart Mix on this combo →
@@ -360,7 +529,7 @@ export default function ResultsPage() {
 
                         {!isAILoading && aiBuilds.length > 0 && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {aiBuilds.map((b) => <AIBuildCard key={b.id} build={b} />)}
+                                {aiBuilds.map((b) => <AIBuildCard key={b.id} build={b} advancedLabels={advancedLabels} />)}
                             </div>
                         )}
 

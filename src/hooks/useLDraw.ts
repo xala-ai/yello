@@ -1,26 +1,34 @@
-// LDrawLoader is included in three/examples/jsm/loaders/LDrawLoader
-// We need to wrap it for use in React Three Fiber if not available in drei
-// Actually, drei has 'useLoader' which works with standard Three loaders.
+'use client';
 
-import { useLoader } from '@react-three/fiber';
-import { LDrawLoader } from 'three/examples/jsm/loaders/LDrawLoader.js';
+import { suspend } from 'suspend-react';
 import { Group } from 'three';
+import { LDrawLoader } from 'three/examples/jsm/loaders/LDrawLoader.js';
+import { LDrawConditionalLineMaterial } from 'three/examples/jsm/materials/LDrawConditionalLineMaterial.js';
+import { LDRAW_COLORS_URL, LDRAW_PARTS_LIBRARY_PATH } from '@/lib/ldraw-config';
 
-export function useLDraw(url: string) {
-  // LDrawLoader requires a path to the parts library.
-  // We will point it to a CDN for standard parts.
+async function loadLDrawModel(url: string): Promise<Group> {
+  const loader = new LDrawLoader();
+  loader.setConditionalLineMaterial(LDrawConditionalLineMaterial);
+  loader.setPartsLibraryPath(LDRAW_PARTS_LIBRARY_PATH);
+  loader.smoothNormals = true;
+  try {
+    await loader.preloadMaterials(LDRAW_COLORS_URL);
+  } catch {
+    // Colours still often embedded in packed models
+  }
+  try {
+    return await loader.loadAsync(url);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      msg.includes('404') || msg.toLowerCase().includes('not found')
+        ? `Part/file not found in the LDraw library (${url.split('/').pop()}).`
+        : `LDraw load failed: ${msg}`,
+    );
+  }
+}
 
-  const object = useLoader(LDrawLoader, url, (loader) => {
-    // Configure the loader to fetch parts from official LDraw library mirror
-    // Or use a public CDN that hosts the ldraw parts folder structure.
-    // 'https://cdn.jsdelivr.net/gh/scarthgap/LDraw-Parts-Library@master/' is a common hack,
-    // but for production we should host our own or use a reliable service.
-    // For this MVP, let's assume the user might provide a full file or we use a demo path.
-
-    // Important: LDrawLoader needs to know where to find sub-parts.
-    // We will set a standard path.
-    (loader as LDrawLoader).setPath('https://cdn.jsdelivr.net/gh/goplayout/gpl-library/ldraw/');
-  });
-
-  return object as Group;
+/** Suspense-friendly LDraw load. Cache key includes URL (blob: or /public path). */
+export function useLDraw(url: string): Group {
+  return suspend(() => loadLDrawModel(url), ['ldraw', url]);
 }

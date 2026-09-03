@@ -8,7 +8,7 @@ import { getBrain } from '@/lib/brain-logic';
 import { useEffect, useState } from 'react';
 
 export function SetList() {
-  const { sets, removeSet, selectedSetIds, toggleSetSelection } = useGarageStore();
+  const { sets, removeSet, selectedSetIds, toggleSetSelection, selectAllSets } = useGarageStore();
   // Force re-render to show brain updates if needed, though store updates usually trigger it.
   // We access the global brain directly for MVP.
   const brain = getBrain();
@@ -22,13 +22,35 @@ export function SetList() {
     );
   }
 
+  const allSelected = sets.length > 0 && selectedSetIds.length === sets.length;
+
   return (
     <div className="w-full mt-8">
-        <div className="flex items-center justify-between mb-4 px-1">
+        <div className="flex items-center justify-between mb-4 px-1 gap-3 flex-wrap">
              <h2 className="text-lg font-bold text-gray-700">Your Sets ({sets.length})</h2>
-             <span className="text-sm text-gray-500">
-                 {selectedSetIds.length} selected for mixing
-             </span>
+             <div className="flex items-center gap-3">
+                 <span className="text-sm text-gray-500">
+                     {selectedSetIds.length} selected for mixing
+                 </span>
+                 <div className="flex gap-1.5">
+                     <button
+                         type="button"
+                         onClick={() => selectAllSets(true)}
+                         disabled={allSelected}
+                         className="text-xs px-2.5 py-1 rounded-md border border-gray-300 bg-white text-gray-900 font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                     >
+                         Select all
+                     </button>
+                     <button
+                         type="button"
+                         onClick={() => selectAllSets(false)}
+                         disabled={selectedSetIds.length === 0}
+                         className="text-xs px-2.5 py-1 rounded-md border border-gray-300 bg-white text-gray-900 font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                     >
+                         Deselect all
+                     </button>
+                 </div>
+             </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -98,8 +120,16 @@ export function SetList() {
                             </div>
                             <div className="flex flex-wrap gap-1">
                                 {dna.tags.map(tag => (
-                                    <span key={tag} className="px-2 py-0.5 bg-yellow-50 text-yellow-800 rounded-full text-[10px] font-semibold capitalize border border-yellow-200">
-                                        {tag.replace('_', ' ')}
+                                    <span
+                                      key={tag}
+                                      className={clsx(
+                                        "px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize border",
+                                        tag === 'duplo'
+                                          ? "bg-sky-50 text-sky-800 border-sky-200"
+                                          : "bg-yellow-50 text-yellow-800 border-yellow-200",
+                                      )}
+                                    >
+                                        {tag.replace(/_/g, ' ')}
                                     </span>
                                 ))}
                                 {dna.mechanism_score > 50 && (

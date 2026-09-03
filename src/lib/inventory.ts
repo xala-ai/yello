@@ -1,11 +1,35 @@
-import { InventoryPart, TieredMatchResult, StructuralSub } from '@/types/rebrickable';
+import { InventoryPart, TieredMatchResult, StructuralSub, MatchRules, DEFAULT_MATCH_RULES } from '@/types/rebrickable';
 import { tryStructuralSub, effectivePenalty } from '@/lib/structural';
+import { tryCrossScaleBrickSub } from '@/lib/duplo';
 
 // ---------------------------------------------------------------------------
 // Key helpers
 // ---------------------------------------------------------------------------
 export const getPartKey  = (p: InventoryPart) => `${p.part.part_num}-${p.color.id}`;
 export const getShapeKey = (p: InventoryPart) => p.part.part_num;
+
+export type SlimInventoryItem = {
+    partNum: string;
+    name: string;
+    colorId: number;
+    colorName: string;
+    qty: number;
+};
+
+/** Slim garage inventory for the AI planner — keep server-action payloads small. */
+export function slimInventoryForAI(masterBin: InventoryPart[], topN = 120): SlimInventoryItem[] {
+    return masterBin
+        .filter((p) => p?.part && p?.color && !p.is_spare)
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, topN)
+        .map((p) => ({
+            partNum: p.part.part_num,
+            name: p.part.name,
+            colorId: p.color.id,
+            colorName: p.color.name,
+            qty: p.quantity,
+        }));
+}
 
 // ---------------------------------------------------------------------------
 // Aggregate multiple set inventories into a master bin
@@ -39,11 +63,11 @@ export interface MatchResult {
 }
 
 // ---------------------------------------------------------------------------
-// Tiered buildability check (T1 / T2 / T3)
+// Buildability check
 //
-// T1 – exact part + exact color
-// T2 – exact part, any color (color swap)
-// T3 – structural substitution (different part_num covering same footprint)
+// 1. Exact — same brick + same colour
+// 2. Shape only — same brick, ignore colour (if rules.ignoreColor)
+// 3. Brick swaps — e.g. 2×6 from two 2×3s (if rules.allowSubstitution)
 //
 // fidelityWeight: 0 = fully rigidity-focused (young child), 1 = fully fidelity-focused (adult)
 // ---------------------------------------------------------------------------
@@ -51,6 +75,7 @@ export function checkBuildabilityTiered(
     mocInventory: InventoryPart[],
     userMasterBin: InventoryPart[],
     fidelityWeight = 0.7,
+    rules: MatchRules = DEFAULT_MATCH_RULES,
 ): TieredMatchResult {
     if (!mocInventory?.length) {
         return {
@@ -71,7 +96,7 @@ export function checkBuildabilityTiered(
         shapeMap.set(getShapeKey(p), (shapeMap.get(getShapeKey(p)) ?? 0) + p.quantity);
     }
 
-    // Mutable copy of shape availability for T3 consumption tracking
+    // Mutable copy of shape availability for later consumption tracking
     const shapeRemaining = new Map(shapeMap);
 
     const missing: InventoryPart[]      = [];
@@ -84,7 +109,7 @@ export function checkBuildabilityTiered(
     let totalNeeded     = 0;
     let totalOwned      = 0;
 
-    // Cumulative rigidity penalty from T3 subs (weighted by qty)
+    // Cumulative rigidity penalty from brick swaps (weighted by qty)
     let totalRigidityPenalty = 0;
     let totalRigidityWeight  = 0;
 
@@ -99,60 +124,86 @@ export function checkBuildabilityTiered(
 
         let remaining = needed;
 
-        // ── T1: exact match (part + color) ─────────────────────────────────
+        // ── Exact: same brick + same colour ─────────────────────────────────
         const exactHave = Math.min(exactMap.get(exactKey) ?? 0, remaining);
         if (exactHave > 0) {
             exactCount   += exactHave;
             totalOwned   += exactHave;
             remaining    -= exactHave;
-            // Reduce shape pool so T2/T3 don't double-count
             shapeRemaining.set(shapeKey, (shapeRemaining.get(shapeKey) ?? 0) - exactHave);
         }
 
         if (remaining === 0) continue;
 
-        // ── T2: shape match (any color) ─────────────────────────────────────
-        const shapeHave = Math.min(shapeRemaining.get(shapeKey) ?? 0, remaining);
-        if (shapeHave > 0) {
-            colorSwapCount += shapeHave;
-            totalOwned     += shapeHave;
-            remaining      -= shapeHave;
-            shapeRemaining.set(shapeKey, (shapeRemaining.get(shapeKey) ?? 0) - shapeHave);
-            colorSwaps.push({ ...mocPart, quantity: shapeHave });
+        // ── Shape only: same brick, ignore colour ───────────────────────────
+        if (rules.ignoreColor) {
+            const shapeHave = Math.min(shapeRemaining.get(shapeKey) ?? 0, remaining);
+            if (shapeHave > 0) {
+                colorSwapCount += shapeHave;
+                totalOwned     += shapeHave;
+                remaining      -= shapeHave;
+                shapeRemaining.set(shapeKey, (shapeRemaining.get(shapeKey) ?? 0) - shapeHave);
+                colorSwaps.push({ ...mocPart, quantity: shapeHave });
+            }
         }
 
         if (remaining === 0) continue;
 
-        // ── T3: structural substitution ────────────────────────────────────
-        // Build a partNum→qty map of what the user still has available
-        // (simplified: use shapeRemaining for substitute parts)
-        const subResult = tryStructuralSub(mocPart, remaining, shapeRemaining);
-        if (subResult) {
-            const { rule, penalty } = subResult;
-            structuralSubCount += remaining;
-            totalOwned         += remaining;
+        // ── Brick swaps (same scale) ────────────────────────────────────────
+        if (rules.allowSubstitution) {
+            const subResult = tryStructuralSub(mocPart, remaining, shapeRemaining);
+            if (subResult) {
+                const { rule, penalty } = subResult;
+                structuralSubCount += remaining;
+                totalOwned         += remaining;
 
-            // Mark substitute parts as consumed
-            for (const sub of rule.substitutes) {
-                const cur = shapeRemaining.get(sub.partNum) ?? 0;
-                shapeRemaining.set(sub.partNum, Math.max(0, cur - sub.qty * remaining));
+                for (const sub of rule.substitutes) {
+                    const cur = shapeRemaining.get(sub.partNum) ?? 0;
+                    shapeRemaining.set(sub.partNum, Math.max(0, cur - sub.qty * remaining));
+                }
+
+                structuralSubs.push({
+                    required: { ...mocPart, quantity: remaining },
+                    usedParts: rule.substitutes.map(s => ({
+                        part: { ...mocPart, part: { ...mocPart.part, part_num: s.partNum }, quantity: s.qty * remaining },
+                        qty: s.qty * remaining,
+                    })),
+                    rigidityPenalty: penalty,
+                });
+
+                totalRigidityPenalty += effectivePenalty(penalty, fidelityWeight) * remaining;
+                totalRigidityWeight  += remaining;
+
+                remaining = 0;
             }
+        }
 
-            // Record for display
-            structuralSubs.push({
-                required: { ...mocPart, quantity: remaining },
-                usedParts: rule.substitutes.map(s => ({
-                    part: { ...mocPart, part: { ...mocPart.part, part_num: s.partNum }, quantity: s.qty * remaining },
-                    qty: s.qty * remaining,
-                })),
-                rigidityPenalty: penalty,
-            });
-
-            // Weighted penalty accumulation
-            totalRigidityPenalty += effectivePenalty(penalty, fidelityWeight) * remaining;
-            totalRigidityWeight  += remaining;
-
-            remaining = 0;
+        // ── Duplo ↔ System brick swaps ──────────────────────────────────────
+        if (remaining > 0 && rules.allowSubstitution) {
+            const cross = tryCrossScaleBrickSub(mocPart, remaining, shapeRemaining);
+            if (cross) {
+                structuralSubCount += cross.coveredQty;
+                totalOwned         += cross.coveredQty;
+                shapeRemaining.set(
+                    cross.usedPartNum,
+                    Math.max(0, (shapeRemaining.get(cross.usedPartNum) ?? 0) - cross.usedQty),
+                );
+                structuralSubs.push({
+                    required: { ...mocPart, quantity: cross.coveredQty },
+                    usedParts: [{
+                        part: {
+                            ...mocPart,
+                            part: { ...mocPart.part, part_num: cross.usedPartNum },
+                            quantity: cross.usedQty,
+                        },
+                        qty: cross.usedQty,
+                    }],
+                    rigidityPenalty: cross.basePenalty,
+                });
+                totalRigidityPenalty += effectivePenalty(cross.basePenalty, fidelityWeight) * cross.coveredQty;
+                totalRigidityWeight  += cross.coveredQty;
+                remaining -= cross.coveredQty;
+            }
         }
 
         if (remaining > 0) {
@@ -164,8 +215,6 @@ export function checkBuildabilityTiered(
         ? Math.round((totalOwned / totalNeeded) * 100)
         : 0;
 
-    // ── Fidelity score: penalises color swaps and structural subs ─────────
-    // T1 contributes full fidelity, T2 partial, T3 less.
     const fidelityScore = totalNeeded > 0
         ? Math.round((
               exactCount * 1.0 +
@@ -174,13 +223,11 @@ export function checkBuildabilityTiered(
           ) / totalNeeded * 100)
         : 0;
 
-    // ── Rigidity score: driven by penalty of structural subs ──────────────
     const avgPenalty = totalRigidityWeight > 0
         ? totalRigidityPenalty / totalRigidityWeight
         : 0;
     const rigidityScore = Math.round((1 - avgPenalty) * 100);
 
-    // ── Composite: blend fidelity & rigidity by user preference ──────────
     const compositeScore = Math.round(
         fidelityScore  * fidelityWeight +
         rigidityScore  * (1 - fidelityWeight)

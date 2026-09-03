@@ -64,15 +64,32 @@ export interface BuildCheckResult {
 // Tiered matching + structural scoring
 // ---------------------------------------------------------------------------
 
-/** T1 = exact part + exact color. T2 = exact part, any color. T3 = structural sub (e.g. 2×3+2×3 → 2×6). */
+// ---------------------------------------------------------------------------
+// Match rules (kid-friendly names in the UI)
+// ---------------------------------------------------------------------------
+
+/** How flexible matching is allowed to be. Exact colour+shape is always tried first. */
+export interface MatchRules {
+    /** Same brick shape, any colour (e.g. red 2×4 counts as blue 2×4). */
+    ignoreColor: boolean;
+    /** Allow brick swaps like one 2×6 from two 2×3s (and Duplo↔System bricks). */
+    allowSubstitution: boolean;
+}
+
+export const DEFAULT_MATCH_RULES: MatchRules = {
+    ignoreColor: true,
+    allowSubstitution: true,
+};
+
+/** @deprecated Internal codes — prefer MatchRules + plain UI labels. */
 export type MatchTier = 'T1' | 'T2' | 'T3';
 
 export interface TierBreakdown {
-    /** Parts matched exactly (same part_num, same color). */
+    /** Same brick + same colour. */
     exactCount: number;
-    /** Parts matched by shape only (same part_num, different color). */
+    /** Same brick shape, different colour. */
     colorSwapCount: number;
-    /** Parts matched via structural substitution (different part_num, equivalent geometry). */
+    /** Different bricks that still cover the same space (e.g. 2×6 ← two 2×3s). */
     structuralSubCount: number;
     totalNeeded: number;
 }
@@ -107,21 +124,46 @@ export interface StructuralSub {
 }
 
 /**
- * Rigidity profile driven by user age.
- * < 5  → pure rigidity focus (young children need stable builds)
- * 5-12 → balanced
- * 13+  → pure fidelity focus (teens/adults want accurate looks)
+ * Builder profile age bands (UI labels) and representative ages for scoring.
+ * Fidelity rises with age: young kids → rigidity, teens/adults → looks.
  */
+export const AGE_BANDS = [
+    { id: '4',     label: '4',     age: 4,  fidelityWeight: 0.1  },
+    { id: '5-6',   label: '5–6',   age: 6,  fidelityWeight: 0.2  },
+    { id: '7-8',   label: '7–8',   age: 8,  fidelityWeight: 0.35 },
+    { id: '9-12',  label: '9–12',  age: 10, fidelityWeight: 0.5  },
+    { id: '12-16', label: '12–16', age: 14, fidelityWeight: 0.7  },
+    { id: '16+',   label: '16+',   age: 18, fidelityWeight: 0.9  },
+] as const;
+
+export type AgeBandId = (typeof AGE_BANDS)[number]['id'];
+
 export interface RigidityProfile {
     age: number;
     /** 0 = full rigidity priority, 1 = full fidelity priority */
     fidelityWeight: number;
 }
 
+/** Snap a stored/legacy numeric age onto the nearest band. */
+export function snapAgeToBand(age: number): (typeof AGE_BANDS)[number] {
+    if (!Number.isFinite(age) || age <= 4) return AGE_BANDS[0];
+    if (age <= 6) return AGE_BANDS[1];
+    if (age <= 8) return AGE_BANDS[2];
+    if (age <= 11) return AGE_BANDS[3];
+    if (age < 16) return AGE_BANDS[4];
+    return AGE_BANDS[5];
+}
+
 export function ageToFidelityWeight(age: number): number {
-    if (age < 5)  return 0.1;
-    if (age < 8)  return 0.25;
-    if (age < 12) return 0.5;
-    if (age < 16) return 0.7;
-    return 0.9;
+    return snapAgeToBand(age).fidelityWeight;
+}
+
+export function ageBandIndex(age: number): number {
+    const band = snapAgeToBand(age);
+    return AGE_BANDS.findIndex((b) => b.id === band.id);
+}
+
+/** Age 9+ can see “Fidelity / Rigidity”; younger builders get plain words. */
+export function usesAdvancedScoreLabels(age: number): boolean {
+    return snapAgeToBand(age).age >= 9;
 }

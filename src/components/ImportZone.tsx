@@ -99,7 +99,7 @@ export function ImportZone() {
         {isProcessing ? (
             <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
         ) : (
-            <div className="flex items-center gap-2 text-gray-500 hover:text-blue-600">
+            <div className="flex items-center gap-2 text-gray-800 hover:text-blue-600">
                 <Upload className="w-5 h-5" />
                 <span className="text-sm font-medium hidden sm:inline">Import CSV</span>
             </div>

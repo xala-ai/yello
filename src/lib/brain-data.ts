@@ -24,7 +24,7 @@ export interface BrainDatabase {
 
 export interface SetDNA {
     set_num: string;
-    tags: string[]; // "heavy_technic", "static_brick", "vehicle"
+    tags: string[]; // "duplo", "system_brick", "pure_technic", "mechanical", …
     complexity_score: number; // 0-100
     mechanism_score: number; // 0-100 (How many gears/axles?)
     brick_score: number; // 0-100 (How many standard bricks?)
