@@ -49,6 +49,7 @@ PREBETA_APPS_SCRIPT_WEBHOOK_URL=
 NEXT_PUBLIC_PREBETA_GATE_DISABLED=false
 ```
 
+**Agent Netlify API access (host machine):** `~/.config/agent-secrets/netlify.env` → `NETLIFY_AUTH_TOKEN` (personal access token, ~90-day expiry ≈ 2026-12-02). Used to manage site/env via Netlify API — not a site env var itself. See OB `System/Development Tools.md` → Netlify.
 ## Auth notes
 - Adults: email+password or Google
 - Kids: `word.word` (each word exactly 5 letters); no typed password
