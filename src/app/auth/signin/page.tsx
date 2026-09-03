@@ -95,7 +95,7 @@ export default function SignInPage() {
         {mode === 'kid' && (
           <div className="space-y-3">
             <p className="text-xs text-gray-500">
-              Kids use a 2-word passphrase (5 letters each), e.g. <code>tiger.grape</code> — no password.
+              Kids use a 2-word passphrase (at least 4 letters each), e.g. <code>tiger.grape</code> — no password.
             </p>
             <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Display name"
               value={name} onChange={(e) => setName(e.target.value)} />

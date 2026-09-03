@@ -2,12 +2,6 @@ import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
 import type { Provider } from 'next-auth/providers';
-import {
-  findUserByEmail,
-  findUserByPassphraseHash,
-  verifyPassword,
-  hashPassphrase,
-} from '@/lib/user-store';
 
 const providers: Provider[] = [];
 
@@ -30,6 +24,7 @@ providers.push(
     },
     async authorize(credentials) {
       if (!credentials?.email || !credentials?.password) return null;
+      const { findUserByEmail, verifyPassword } = await import('@/lib/user-store');
       const email = String(credentials.email);
       const password = String(credentials.password);
       const user = await findUserByEmail(email);
@@ -54,7 +49,8 @@ providers.push(
       if (!credentials?.passphrase) return null;
       const passphrase = String(credentials.passphrase).trim().toLowerCase();
       const parts = passphrase.split('.');
-      if (parts.length !== 2 || parts.some((p) => p.length !== 5)) return null;
+      if (parts.length !== 2 || parts.some((p) => !/^[a-z]{4,}$/.test(p))) return null;
+      const { hashPassphrase, findUserByPassphraseHash } = await import('@/lib/user-store');
       const hash = await hashPassphrase(passphrase);
       const user = await findUserByPassphraseHash(hash);
       if (!user) return null;

@@ -6,7 +6,7 @@ YelloBricks (`yellobricks.xala.ai`) is a Next.js app that turns owned LEGO sets 
 2. **Cross Mix** combinations of owned sets
 3. **AI Builds** — novel builds from your inventory with step instructions
 
-Deployed on **Netlify** (Next.js runtime). Source: `xala-ai/yello`.
+Deployed on **Netlify** (OpenNext adapter, auto-applied — do not pin `@netlify/plugin-nextjs`). Source: `xala-ai/yello`.
 
 ## Stack
 - Next.js 16 (App Router) + React 19 + TypeScript + Tailwind 4
@@ -42,6 +42,7 @@ REBRICKABLE_API_KEY=
 OPENROUTER_API_KEY=          # project key (see agent-secrets/yellobricks.env)
 AI_BUILD_MODEL=anthropic/claude-opus-4.6
 AUTH_SECRET=
+AUTH_TRUST_HOST=true
 NEXTAUTH_URL=https://yellobricks.xala.ai
 GOOGLE_CLIENT_ID=            # optional
 GOOGLE_CLIENT_SECRET=        # optional
@@ -52,7 +53,7 @@ NEXT_PUBLIC_PREBETA_GATE_DISABLED=false
 **Agent Netlify API access (host machine):** `~/.config/agent-secrets/netlify.env` → `NETLIFY_AUTH_TOKEN` (personal access token, ~90-day expiry ≈ 2026-12-02). Used to manage site/env via Netlify API — not a site env var itself. See OB `System/Development Tools.md` → Netlify.
 ## Auth notes
 - Adults: email+password or Google
-- Kids: `word.word` (each word exactly 5 letters); no typed password
+- Kids: `word.word` (each word at least 4 letters); no typed password
 - Garage sync: Save/Load on home when signed in (server `.data/` — for durable prod, swap to Postgres/Blobs)
 
 ## Data flow

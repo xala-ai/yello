@@ -27,7 +27,9 @@ const FIVE_LETTER_WORDS: string[] = [
 ];
 
 function getDataDir(): string {
-  const dir = path.join(process.cwd(), '.data');
+  const dir = process.env.NETLIFY
+    ? path.join('/tmp', 'yellobricks-data')
+    : path.join(process.cwd(), '.data');
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }

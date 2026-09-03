@@ -1,14 +1,15 @@
 [build]
   command = "npm run build"
-  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
 
-# Set these in Netlify UI (Site settings → Environment variables):
-# REBRICKABLE_API_KEY, OPENROUTER_API_KEY, AI_BUILD_MODEL,
-# AUTH_SECRET, NEXTAUTH_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
-# PREBETA_APPS_SCRIPT_WEBHOOK_URL, NEXT_PUBLIC_PREBETA_GATE_DISABLED
+# Do not pin [[plugins]] @netlify/plugin-nextjs — that forces the legacy
+# Next runtime. Netlify applies the OpenNext adapter automatically.
+# Do not set publish = ".next"; the adapter owns deploy output.
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+# Site env (Netlify UI / API):
+# REBRICKABLE_API_KEY, OPENROUTER_API_KEY, AI_BUILD_MODEL,
+# AUTH_SECRET, AUTH_TRUST_HOST, NEXTAUTH_URL,
+# GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
+# PREBETA_APPS_SCRIPT_WEBHOOK_URL, NEXT_PUBLIC_PREBETA_GATE_DISABLED
