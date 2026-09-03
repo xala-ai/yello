@@ -8,7 +8,9 @@ import {
     findCandidateSetsAction,
     generateAIBuildAction,
 } from '@/app/actions';
+import { syncGarageUpAction, syncGarageDownAction } from '@/app/actions/auth';
 import { aggregateInventory, checkBuildabilityTiered, scoreNewSetOverlap } from '@/lib/inventory';
+import { findCrossMixBuilds } from '@/lib/crossmix';
 import { learnSet } from '@/lib/brain-logic';
 
 // ---------------------------------------------------------------------------
@@ -31,13 +33,25 @@ export interface AIBuild {
         colorId: number;
         colorName: string;
         x: number; y: number; z: number;
-        rotation: number; // degrees around Y axis
+        rotation: number;
         description: string;
+        loadBearing?: boolean;
     }>;
+    /** Full placed geometry for the instruction viewer */
+    placed?: import('@/lib/planner').PlacedBrick[];
     totalParts: number;
     estimatedFidelityScore: number;
     estimatedRigidityScore: number;
+    compositeScore?: number;
+    warnings?: string[];
     generatedAt: string;
+}
+
+export interface CrossMixCombo {
+    comboSetNums: string[];
+    label: string;
+    masterPartCount: number;
+    suggestedThemes: number[];
 }
 
 // ---------------------------------------------------------------------------
@@ -54,12 +68,15 @@ interface GarageState {
 
     // AI Builds
     aiBuilds: AIBuild[];
-    aiMode: boolean;           // true = AI generation mode; false = Rebrickable mode
-    aiPrompt: string;          // user's natural-language build description
+    aiMode: boolean;
+    aiPrompt: string;
+
+    // Cross-mix of owned sets
+    crossMixes: CrossMixCombo[];
 
     // Fidelity / rigidity profile
-    age: number;               // user-supplied age (drives auto fidelityWeight)
-    fidelityWeight: number;    // 0..1 – can be overridden manually
+    age: number;
+    fidelityWeight: number;
 
     // Loading / error
     isLoading: boolean;
@@ -83,9 +100,14 @@ interface GarageState {
     setAIPrompt: (prompt: string) => void;
     generateAIBuilds: () => Promise<void>;
 
-    // Actions – Profile
+    // Actions – Cross-mix
+    findCrossMixes: () => void;
+
+    // Actions – Profile / sync
     setAge: (age: number) => void;
     setFidelityWeight: (w: number) => void;
+    syncGarageToCloud: () => Promise<void>;
+    loadGarageFromCloud: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,8 +126,9 @@ export const useGarageStore = create<GarageState>()(
             aiBuilds: [],
             aiMode: false,
             aiPrompt: '',
+            crossMixes: [],
             age: 18,
-            fidelityWeight: 0.9,   // default adult / high-fidelity
+            fidelityWeight: 0.9,
             isLoading: false,
             isAILoading: false,
             error: null,
@@ -261,6 +284,42 @@ export const useGarageStore = create<GarageState>()(
                 } catch (err) {
                     set({ isAILoading: false, error: err instanceof Error ? err.message : 'AI build generation failed' });
                 }
+            },
+
+            findCrossMixes: () => {
+                const { sets, setInventories, selectedSetIds, fidelityWeight } = get();
+                const active = sets.filter((s) => selectedSetIds.includes(s.set_num));
+                if (active.length < 2) {
+                    set({ error: 'Select at least two sets for cross-mix.', crossMixes: [] });
+                    return;
+                }
+                const combos = findCrossMixBuilds(
+                    active.map((s) => ({
+                        set_num: s.set_num,
+                        name: s.name,
+                        theme_id: s.theme_id,
+                        num_parts: s.num_parts,
+                    })),
+                    setInventories as Record<string, Array<{ part: { part_num: string }; color: { id: number }; quantity: number }>>,
+                    fidelityWeight,
+                );
+                set({ crossMixes: combos, error: null });
+            },
+
+            syncGarageToCloud: async () => {
+                const { sets, selectedSetIds, age, fidelityWeight } = get();
+                await syncGarageUpAction({ sets, selectedSetIds, age, fidelityWeight });
+            },
+
+            loadGarageFromCloud: async () => {
+                const data = await syncGarageDownAction();
+                if (!data) return;
+                set({
+                    sets: data.sets ?? get().sets,
+                    selectedSetIds: data.selectedSetIds ?? get().selectedSetIds,
+                    age: data.age ?? get().age,
+                    fidelityWeight: data.fidelityWeight ?? get().fidelityWeight,
+                });
             },
         }),
         {

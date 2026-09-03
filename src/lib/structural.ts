@@ -69,27 +69,67 @@ const PART_GEOMETRY: Record<string, PartGeometry> = {
     '3003': { studsX: 2, studsZ: 2, heightPlates: 3, isStructural: true },   // 2×2 brick
     '2456': { studsX: 6, studsZ: 2, heightPlates: 3, isStructural: true },   // 2×6 brick
     '3007': { studsX: 8, studsZ: 2, heightPlates: 3, isStructural: true },   // 2×8 brick
+    '3008': { studsX: 8, studsZ: 1, heightPlates: 3, isStructural: true },   // 1×8 brick
+    '3009': { studsX: 6, studsZ: 1, heightPlates: 3, isStructural: true },   // 1×6 brick
+    '3010': { studsX: 4, studsZ: 1, heightPlates: 3, isStructural: true },   // 1×4 brick
+    '3622': { studsX: 3, studsZ: 1, heightPlates: 3, isStructural: true },   // 1×3 brick
+    '6112': { studsX: 12, studsZ: 1, heightPlates: 3, isStructural: true },  // 1×12 brick
+    '3710': { studsX: 4, studsZ: 1, heightPlates: 1, isStructural: false },  // 1×4 plate
+    '3666': { studsX: 6, studsZ: 1, heightPlates: 1, isStructural: false },  // 1×6 plate
+    '3460': { studsX: 8, studsZ: 1, heightPlates: 1, isStructural: false },  // 1×8 plate
+    '4477': { studsX: 10, studsZ: 1, heightPlates: 1, isStructural: false }, // 1×10 plate
+    '60479': { studsX: 12, studsZ: 1, heightPlates: 1, isStructural: false },// 1×12 plate
+    '3031': { studsX: 4, studsZ: 4, heightPlates: 1, isStructural: false },  // 4×4 plate
+    '3032': { studsX: 6, studsZ: 4, heightPlates: 1, isStructural: false },  // 4×6 plate
+    '3035': { studsX: 8, studsZ: 4, heightPlates: 1, isStructural: false },  // 4×8 plate
+    '3036': { studsX: 8, studsZ: 6, heightPlates: 1, isStructural: false },  // 6×8 plate
 };
+
+/** True when a substitution should be forbidden on load-bearing layers. */
+export function isLoadBearingPart(partNum: string): boolean {
+    return PART_GEOMETRY[partNum]?.isStructural ?? false;
+}
 
 // ---------------------------------------------------------------------------
 // Substitution rule table.
 // Penalty heuristic: splitting a structural piece across a seam = 0.4 base;
 // non-structural (plates) = 0.15 base (plates rely on bonded layers above).
+// Prefer staggered / overlapping seams (lower penalty) over mid-span seams.
 // ---------------------------------------------------------------------------
 export const SUBSTITUTION_RULES: SubstitutionRule[] = [
-    // Plates
-    { requiredPartNum: '3021', substitutes: [{ partNum: '3023', qty: 3 }], basePenalty: 0.15 }, // 2×3 ← three 2×1
-    { requiredPartNum: '3020', substitutes: [{ partNum: '3021', qty: 2 }], basePenalty: 0.12 }, // 2×4 ← two 2×2 (approx, overlapping OK)
-    { requiredPartNum: '3795', substitutes: [{ partNum: '3021', qty: 2 }], basePenalty: 0.15 }, // 2×6 ← two 2×3
-    { requiredPartNum: '3795', substitutes: [{ partNum: '3020', qty: 1 }, { partNum: '3023', qty: 1 }], basePenalty: 0.12 }, // 2×6 ← 2×4 + 2×1 (better overlap)
-    { requiredPartNum: '3034', substitutes: [{ partNum: '3795', qty: 1 }, { partNum: '3023', qty: 1 }], basePenalty: 0.18 }, // 2×8 ← 2×6 + 2×1 (poor seam)
-    { requiredPartNum: '3034', substitutes: [{ partNum: '3020', qty: 2 }], basePenalty: 0.12 }, // 2×8 ← two 2×4
-    { requiredPartNum: '3832', substitutes: [{ partNum: '3034', qty: 1 }, { partNum: '3023', qty: 1 }], basePenalty: 0.2 }, // 2×10 ← 2×8+2×1
-    // Bricks
-    { requiredPartNum: '3002', substitutes: [{ partNum: '3004', qty: 3 }], basePenalty: 0.4 }, // 2×3 brick ← three 2×1 bricks
-    { requiredPartNum: '2456', substitutes: [{ partNum: '3002', qty: 2 }], basePenalty: 0.35 }, // 2×6 ← two 2×3
-    { requiredPartNum: '3001', substitutes: [{ partNum: '3003', qty: 2 }], basePenalty: 0.3 }, // 2×4 ← two 2×2
-    { requiredPartNum: '3007', substitutes: [{ partNum: '3001', qty: 2 }], basePenalty: 0.4 }, // 2×8 ← two 2×4
+    // Plates (2-wide)
+    { requiredPartNum: '3021', substitutes: [{ partNum: '3023', qty: 3 }], basePenalty: 0.15 },
+    { requiredPartNum: '3020', substitutes: [{ partNum: '3022', qty: 2 }], basePenalty: 0.1 },
+    { requiredPartNum: '3020', substitutes: [{ partNum: '3021', qty: 1 }, { partNum: '3023', qty: 1 }], basePenalty: 0.12 },
+    { requiredPartNum: '3795', substitutes: [{ partNum: '3021', qty: 2 }], basePenalty: 0.15 },
+    { requiredPartNum: '3795', substitutes: [{ partNum: '3020', qty: 1 }, { partNum: '3023', qty: 1 }], basePenalty: 0.12 },
+    { requiredPartNum: '3795', substitutes: [{ partNum: '3020', qty: 1 }, { partNum: '3022', qty: 1 }], basePenalty: 0.1 },
+    { requiredPartNum: '3034', substitutes: [{ partNum: '3020', qty: 2 }], basePenalty: 0.12 },
+    { requiredPartNum: '3034', substitutes: [{ partNum: '3795', qty: 1 }, { partNum: '3023', qty: 1 }], basePenalty: 0.18 },
+    { requiredPartNum: '3832', substitutes: [{ partNum: '3034', qty: 1 }, { partNum: '3023', qty: 1 }], basePenalty: 0.2 },
+    { requiredPartNum: '3832', substitutes: [{ partNum: '3795', qty: 1 }, { partNum: '3020', qty: 1 }], basePenalty: 0.14 },
+    { requiredPartNum: '4282', substitutes: [{ partNum: '3034', qty: 2 }], basePenalty: 0.16 },
+    // Plates (1-wide)
+    { requiredPartNum: '3710', substitutes: [{ partNum: '3023', qty: 2 }], basePenalty: 0.12 },
+    { requiredPartNum: '3666', substitutes: [{ partNum: '3710', qty: 1 }, { partNum: '3023', qty: 1 }], basePenalty: 0.14 },
+    { requiredPartNum: '3460', substitutes: [{ partNum: '3710', qty: 2 }], basePenalty: 0.12 },
+    { requiredPartNum: '4477', substitutes: [{ partNum: '3460', qty: 1 }, { partNum: '3023', qty: 1 }], basePenalty: 0.18 },
+    // Larger plates
+    { requiredPartNum: '3032', substitutes: [{ partNum: '3031', qty: 1 }, { partNum: '3020', qty: 1 }], basePenalty: 0.2 },
+    { requiredPartNum: '3035', substitutes: [{ partNum: '3031', qty: 2 }], basePenalty: 0.18 },
+    // Bricks (2-wide) — higher penalties (load-bearing)
+    { requiredPartNum: '3002', substitutes: [{ partNum: '3004', qty: 3 }], basePenalty: 0.45 },
+    { requiredPartNum: '3002', substitutes: [{ partNum: '3003', qty: 1 }, { partNum: '3004', qty: 1 }], basePenalty: 0.35 },
+    { requiredPartNum: '2456', substitutes: [{ partNum: '3002', qty: 2 }], basePenalty: 0.35 },
+    { requiredPartNum: '2456', substitutes: [{ partNum: '3001', qty: 1 }, { partNum: '3003', qty: 1 }], basePenalty: 0.28 },
+    { requiredPartNum: '3001', substitutes: [{ partNum: '3003', qty: 2 }], basePenalty: 0.3 },
+    { requiredPartNum: '3001', substitutes: [{ partNum: '3004', qty: 4 }], basePenalty: 0.5 },
+    { requiredPartNum: '3007', substitutes: [{ partNum: '3001', qty: 2 }], basePenalty: 0.4 },
+    { requiredPartNum: '3007', substitutes: [{ partNum: '2456', qty: 1 }, { partNum: '3003', qty: 1 }], basePenalty: 0.32 },
+    // Bricks (1-wide)
+    { requiredPartNum: '3010', substitutes: [{ partNum: '3004', qty: 2 }], basePenalty: 0.35 },
+    { requiredPartNum: '3009', substitutes: [{ partNum: '3010', qty: 1 }, { partNum: '3004', qty: 1 }], basePenalty: 0.38 },
+    { requiredPartNum: '3008', substitutes: [{ partNum: '3010', qty: 2 }], basePenalty: 0.4 },
 ];
 
 // Index for O(1) lookup

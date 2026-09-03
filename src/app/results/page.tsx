@@ -12,6 +12,7 @@ import {
 import clsx from 'clsx';
 import { SuggestionBar } from '@/components/SuggestionBar';
 import { ModelViewerZone } from '@/components/ModelViewerZone';
+import { InstructionViewer } from '@/components/InstructionViewer';
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -40,6 +41,12 @@ function SliderRow({
 
 function AIBuildCard({ build }: { build: import('@/store/garage').AIBuild }) {
     const [expanded, setExpanded] = useState(false);
+    const [viewer, setViewer] = useState(false);
+    const placed = build.placed ?? build.steps.map((s) => ({
+        partNum: s.partNum, colorId: s.colorId, colorName: s.colorName,
+        x: s.x, y: s.y, z: s.z, rot: s.rotation, step: s.stepNum,
+        description: s.description, loadBearing: !!s.loadBearing,
+    }));
     return (
         <div className="bg-white border border-gray-100 rounded-xl p-4 flex flex-col gap-3">
             <div className="flex items-start justify-between gap-2">
@@ -86,7 +93,14 @@ function AIBuildCard({ build }: { build: import('@/store/garage').AIBuild }) {
                 </ol>
             )}
 
+            <button onClick={() => setViewer(true)}
+                className="w-full py-2 bg-yellow-400 text-black font-bold rounded-lg text-sm">
+                Open instruction viewer
+            </button>
             <p className="text-[10px] text-gray-300">Generated {new Date(build.generatedAt).toLocaleString()}</p>
+            {viewer && (
+                <InstructionViewer name={build.name} steps={placed} onClose={() => setViewer(false)} />
+            )}
         </div>
     );
 }
@@ -97,17 +111,17 @@ function AIBuildCard({ build }: { build: import('@/store/garage').AIBuild }) {
 
 export default function ResultsPage() {
     const {
-        sets, mocs, smartMatches, aiBuilds, aiMode, aiPrompt,
+        sets, mocs, smartMatches, aiBuilds, aiMode, aiPrompt, crossMixes,
         age, fidelityWeight,
-        findBuilds, findSmartBuilds, generateAIBuilds,
+        findBuilds, findSmartBuilds, generateAIBuilds, findCrossMixes,
         setAIMode, setAIPrompt, setAge, setFidelityWeight,
         isLoading, isAILoading, error,
     } = useGarageStore();
 
-    const [activeTab, setActiveTab] = useState<'strict' | 'smart' | 'ai'>('strict');
+    const [activeTab, setActiveTab] = useState<'strict' | 'smart' | 'ai' | 'cross'>('strict');
     const [isHydrated, setIsHydrated] = useState(false);
     const [minMatch, setMinMatch] = useState(0);
-    const [sortBy, setSortBy] = useState<'composite' | 'percentage' | 'parts'>('composite');
+    const [sortBy, setSortBy] = useState<'composite' | 'percentage' | 'parts' | 'novelty'>('composite');
 
     useEffect(() => { useGarageStore.persist.rehydrate(); setIsHydrated(true); }, []);
 
@@ -130,6 +144,11 @@ export default function ResultsPage() {
         .sort((a, b) => {
             if (sortBy === 'composite')   return (b.matchResult?.compositeScore  ?? 0) - (a.matchResult?.compositeScore  ?? 0);
             if (sortBy === 'percentage')  return (b.matchResult?.percentage      ?? 0) - (a.matchResult?.percentage      ?? 0);
+            if (sortBy === 'novelty') {
+                const nb = (b.noveltyScore ?? 0) * 0.6 + (b.matchResult?.compositeScore ?? 0) * 0.4;
+                const na = (a.noveltyScore ?? 0) * 0.6 + (a.matchResult?.compositeScore ?? 0) * 0.4;
+                return nb - na;
+            }
             return b.num_parts - a.num_parts;
         });
 
@@ -199,12 +218,14 @@ export default function ResultsPage() {
                         {([
                             { id: 'strict', label: 'Standard Alternates', icon: <Layers className="w-4 h-4" /> },
                             { id: 'smart',  label: 'Smart Mix',           icon: <Sparkles className="w-4 h-4" /> },
+                            { id: 'cross',  label: 'Cross Mix',           icon: <Layers className="w-4 h-4" /> },
                             { id: 'ai',     label: 'AI Builds',           icon: <Bot className="w-4 h-4" /> },
                         ] as const).map(({ id, label, icon }) => (
                             <button key={id}
                                 onClick={() => {
                                     setActiveTab(id);
                                     if (id === 'smart' && smartMatches.length === 0) findSmartBuilds();
+                                    if (id === 'cross') findCrossMixes();
                                     if (id === 'ai') setAIMode(true);
                                     else setAIMode(false);
                                 }}
@@ -238,6 +259,7 @@ export default function ResultsPage() {
                                     <option value="composite">Best overall</option>
                                     <option value="percentage">Coverage %</option>
                                     <option value="parts">Part count</option>
+                                    <option value="novelty">Best to buy (novelty)</option>
                                 </select>
                             </div>
                         </div>
@@ -270,6 +292,38 @@ export default function ResultsPage() {
                                 hint="Lower the minimum score or add more sets."
                                 action={{ label: 'Generate Ideas', onClick: () => findSmartBuilds() }}
                               />
+                )}
+
+                {/* ── Cross Mix ── */}
+                {activeTab === 'cross' && (
+                    <div className="space-y-4">
+                        <button onClick={findCrossMixes}
+                            className="px-4 py-2 bg-yellow-400 text-black font-bold rounded-lg text-sm">
+                            Recompute cross-mixes
+                        </button>
+                        {crossMixes.length === 0 ? (
+                            <EmptyState label="No cross-mixes yet." hint="Select 2+ sets in the garage, then recompute." />
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {crossMixes.map((c) => (
+                                    <div key={c.comboSetNums.join('+')} className="bg-white border border-gray-100 rounded-xl p-4">
+                                        <h3 className="font-bold text-sm text-gray-900">{c.label}</h3>
+                                        <p className="text-xs text-gray-500 mt-1">{c.masterPartCount} parts in combined bin</p>
+                                        <p className="text-xs text-gray-400 mt-1">Sets: {c.comboSetNums.join(', ')}</p>
+                                        <button
+                                            className="mt-3 text-xs font-semibold text-yellow-700 hover:underline"
+                                            onClick={() => {
+                                                setActiveTab('smart');
+                                                findSmartBuilds();
+                                            }}
+                                        >
+                                            Run Smart Mix on this combo →
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 )}
 
                 {/* ── AI Builds ── */}

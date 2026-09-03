@@ -4,26 +4,59 @@ import { SetInput } from '@/components/SetInput';
 import { SetList } from '@/components/SetList';
 import { ImportZone } from '@/components/ImportZone';
 import Link from 'next/link';
-import { Hammer } from 'lucide-react';
+import { Hammer, LogIn, CloudUpload, CloudDownload } from 'lucide-react';
 import { useGarageStore } from '@/store/garage';
 import { useEffect, useState } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 
 export default function Home() {
-  // Hydration fix
   const [isHydrated, setIsHydrated] = useState(false);
+  const { data: session } = useSession();
+  const syncGarageToCloud = useGarageStore((s) => s.syncGarageToCloud);
+  const loadGarageFromCloud = useGarageStore((s) => s.loadGarageFromCloud);
 
   useEffect(() => {
     useGarageStore.persist.rehydrate();
     setIsHydrated(true);
   }, []);
 
-  if (!isHydrated) {
-      return null; // or a loading spinner
-  }
+  if (!isHydrated) return null;
 
   return (
     <main className="min-h-screen bg-gray-50 p-8 pb-24">
       <div className="max-w-6xl mx-auto flex flex-col items-center">
+        <div className="w-full flex justify-end gap-2 mb-4 text-sm">
+          {session?.user ? (
+            <>
+              <span className="text-gray-600 self-center">
+                {(session.user as { name?: string }).name || session.user.email}
+              </span>
+              <button
+                onClick={() => loadGarageFromCloud()}
+                className="px-3 py-1.5 border rounded-lg flex items-center gap-1 hover:bg-white"
+              >
+                <CloudDownload className="w-4 h-4" /> Load
+              </button>
+              <button
+                onClick={() => syncGarageToCloud()}
+                className="px-3 py-1.5 border rounded-lg flex items-center gap-1 hover:bg-white"
+              >
+                <CloudUpload className="w-4 h-4" /> Save
+              </button>
+              <button onClick={() => signOut()} className="px-3 py-1.5 border rounded-lg hover:bg-white">
+                Sign out
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/auth/signin"
+              className="px-3 py-1.5 bg-black text-white rounded-lg flex items-center gap-1"
+            >
+              <LogIn className="w-4 h-4" /> Sign in
+            </Link>
+          )}
+        </div>
+
         <div className="text-center mb-12 space-y-4">
           <h1 className="text-5xl font-black text-gray-900 tracking-tight">
             Yello<span className="text-yellow-500">Bricks</span>
@@ -34,25 +67,24 @@ export default function Home() {
         </div>
 
         <div className="w-full max-w-2xl flex flex-col sm:flex-row gap-4 items-stretch">
-            <div className="flex-1">
-                <SetInput />
-            </div>
-            <div className="sm:w-48">
-                <ImportZone />
-            </div>
+          <div className="flex-1">
+            <SetInput />
+          </div>
+          <div className="sm:w-48">
+            <ImportZone />
+          </div>
         </div>
 
         <SetList />
 
-        {/* Floating Action Button for Results */}
         <div className="fixed bottom-8 right-8">
-            <Link
-                href="/results"
-                className="flex items-center gap-2 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-full shadow-lg transition-transform hover:scale-105"
-            >
-                <Hammer className="w-5 h-5" />
-                Find Builds
-            </Link>
+          <Link
+            href="/results"
+            className="flex items-center gap-2 px-6 py-4 bg-yellow-400 hover:bg-yellow-500 text-black font-bold rounded-full shadow-lg transition-transform hover:scale-105 border-b-4 border-yellow-600"
+          >
+            <Hammer className="w-5 h-5" />
+            Find Builds
+          </Link>
         </div>
       </div>
     </main>

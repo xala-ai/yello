@@ -2,6 +2,7 @@
 
 import { LegoSet, InventoryPart, Moc } from '@/types/rebrickable';
 import type { AIBuild } from '@/store/garage';
+import { planBuildFromInventory } from '@/lib/planner';
 
 const BASE_URL = 'https://rebrickable.com/api/v3';
 const API_KEY  = process.env.REBRICKABLE_API_KEY || process.env.NEXT_PUBLIC_REBRICKABLE_API_KEY;
@@ -36,9 +37,9 @@ export async function getSetInventoryAction(setNum: string): Promise<InventoryPa
     let page = 0;
 
     while (nextUrl && page < 5) {
-        const res = await fetch(nextUrl, { headers: rbHeaders });
+        const res: Response = await fetch(nextUrl, { headers: rbHeaders });
         if (!res.ok) throw new Error(`Failed to fetch inventory for ${setNum}`);
-        const data = await res.json();
+        const data: { results: InventoryPart[]; next: string | null } = await res.json();
         parts    = [...parts, ...data.results];
         nextUrl  = data.next ?? null;
         page++;
@@ -93,128 +94,102 @@ export async function findCandidateSetsAction(
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 const OPENROUTER_KEY  = process.env.OPENROUTER_API_KEY;
-const AI_MODEL        = process.env.AI_BUILD_MODEL ?? 'google/gemini-2.5-flash';
+const AI_MODEL = process.env.AI_BUILD_MODEL ?? 'anthropic/claude-opus-4.6';
 
-/**
- * Summarise the master bin into a compact JSON the LLM can reason over.
- * We only send the top-N most common parts to keep the prompt manageable.
- */
-function buildInventorySummary(masterBin: InventoryPart[], topN = 80): object[] {
+function buildInventorySummary(masterBin: InventoryPart[], topN = 100) {
     return masterBin
         .filter((p) => !p.is_spare)
         .sort((a, b) => b.quantity - a.quantity)
         .slice(0, topN)
         .map((p) => ({
-            part: p.part.part_num,
+            partNum: p.part.part_num,
             name: p.part.name,
-            color: p.color.name,
-            qty:  p.quantity,
+            colorId: p.color.id,
+            colorName: p.color.name,
+            qty: p.quantity,
         }));
 }
 
 /**
- * Generate a novel LEGO build plan using an LLM via OpenRouter.
- *
- * The prompt asks the model to return a structured JSON build plan that
- * YelloBricks can render step-by-step.  The fidelityWeight and age are used
- * to set the model's optimisation target.
+ * Hybrid AI build: local inventory-constrained planner (rigidity-aware),
+ * then optional Opus enrichment for naming / narrative when OpenRouter is set.
  */
 export async function generateAIBuildAction(
-    masterBin:     InventoryPart[],
-    prompt:        string,
+    masterBin: InventoryPart[],
+    prompt: string,
     fidelityWeight: number,
-    age:           number,
+    age: number,
 ): Promise<AIBuild> {
-    if (!OPENROUTER_KEY) throw new Error('OpenRouter API key not configured (OPENROUTER_API_KEY)');
-
     const inventory = buildInventorySummary(masterBin);
-    const rigidityLevel = fidelityWeight < 0.4 ? 'high (child-safe, structural priority)' : fidelityWeight < 0.7 ? 'medium' : 'low (aesthetic priority)';
+    if (inventory.length === 0) throw new Error('No parts in selected sets');
 
-    const systemPrompt = `You are a LEGO master builder AI. You design LEGO builds using ONLY the parts provided in the inventory, producing structured JSON build plans.
+    const plan = await planBuildFromInventory(inventory, prompt, fidelityWeight, age);
 
-Rules:
-- Use ONLY parts from the provided inventory. Never invent part numbers.
-- Respect quantities — do not exceed what is available.
-- Optimise for the requested fidelity/rigidity level.
-- Keep builds interesting but achievable in 10-30 steps.
-- Output ONLY valid JSON matching the schema below. No prose, no markdown fences.
+    let name = plan.name;
+    let description = plan.description;
 
-Rigidity requirement: ${rigidityLevel}
-Builder age: ${age}
-
-Schema:
-{
-  "name": "string",
-  "description": "string (1-2 sentences)",
-  "estimatedFidelityScore": 0-100,
-  "estimatedRigidityScore": 0-100,
-  "steps": [
-    {
-      "stepNum": 1,
-      "partNum": "3001",
-      "colorId": 4,
-      "colorName": "Red",
-      "x": 0, "y": 0, "z": 0,
-      "rotation": 0,
-      "description": "Place 2×4 red brick as base"
+    // Enrich with large model when available (does not invent parts — naming only)
+    if (OPENROUTER_KEY) {
+        try {
+            const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${OPENROUTER_KEY}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': 'https://yellobricks.xala.ai',
+                    'X-Title': 'YelloBricks',
+                },
+                body: JSON.stringify({
+                    model: AI_MODEL,
+                    temperature: 0.4,
+                    max_tokens: 400,
+                    response_format: { type: 'json_object' },
+                    messages: [
+                        {
+                            role: 'user',
+                            content: `Name this LEGO build for intent "${prompt}". Age=${age}, fidelityWeight=${fidelityWeight}.
+Steps (${plan.steps.length}): ${plan.steps.slice(0, 12).map((s) => s.description).join('; ')}.
+Return JSON: {"name":"...","description":"1-2 sentences"}`,
+                        },
+                    ],
+                }),
+            });
+            if (res.ok) {
+                const json = await res.json();
+                let content = json.choices?.[0]?.message?.content || '';
+                content = content.replace(/^```json\n?|\n?```$/g, '').trim();
+                const parsed = JSON.parse(content);
+                if (parsed.name) name = parsed.name;
+                if (parsed.description) description = parsed.description;
+            }
+        } catch {
+            // keep heuristic name/description
+        }
     }
-  ]
-}`;
-
-    const userPrompt = `Build idea: "${prompt}"
-
-Available parts (top ${inventory.length} by quantity):
-${JSON.stringify(inventory, null, 2)}`;
-
-    const body = JSON.stringify({
-        model: AI_MODEL,
-        messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user',   content: userPrompt   },
-        ],
-        temperature: 0.6,
-        max_tokens:  4000,
-        response_format: { type: 'json_object' },
-    });
-
-    const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
-        method:  'POST',
-        headers: {
-            'Authorization': `Bearer ${OPENROUTER_KEY}`,
-            'Content-Type':  'application/json',
-            'HTTP-Referer':  'https://yellobricks.xala.ai',
-            'X-Title':       'YelloBricks',
-        },
-        body,
-    });
-
-    if (!res.ok) {
-        const errText = await res.text().catch(() => res.statusText);
-        throw new Error(`AI generation failed (HTTP ${res.status}): ${errText.slice(0, 200)}`);
-    }
-
-    const json = await res.json();
-    const content = json.choices?.[0]?.message?.content;
-    if (!content) throw new Error('Empty response from AI model');
-
-    let parsed: Omit<AIBuild, 'id' | 'totalParts' | 'generatedAt'>;
-    try {
-        parsed = JSON.parse(content);
-    } catch {
-        throw new Error('AI returned invalid JSON — try rephrasing your prompt.');
-    }
-
-    if (!parsed.steps?.length) throw new Error('AI returned no build steps — try a more specific prompt.');
 
     return {
-        id:                    crypto.randomUUID(),
-        name:                  parsed.name                  ?? prompt,
-        description:           parsed.description           ?? '',
-        steps:                 parsed.steps,
-        totalParts:            parsed.steps.length,
-        estimatedFidelityScore: parsed.estimatedFidelityScore ?? 0,
-        estimatedRigidityScore: parsed.estimatedRigidityScore ?? 0,
-        generatedAt:           new Date().toISOString(),
+        id: crypto.randomUUID(),
+        name,
+        description,
+        steps: plan.steps.map((s) => ({
+            stepNum: s.step,
+            partNum: s.partNum,
+            colorId: s.colorId,
+            colorName: s.colorName,
+            x: s.x,
+            y: s.y,
+            z: s.z,
+            rotation: s.rot,
+            description: s.description,
+            loadBearing: s.loadBearing,
+        })),
+        placed: plan.steps,
+        totalParts: plan.steps.length,
+        estimatedFidelityScore: plan.fidelityScore,
+        estimatedRigidityScore: plan.rigidityScore,
+        compositeScore: plan.compositeScore,
+        warnings: plan.warnings,
+        generatedAt: new Date().toISOString(),
     };
 }
 
@@ -228,9 +203,9 @@ export async function getMocInventoryAction(setNum: string): Promise<InventoryPa
     let nextUrl: string | null = `${BASE_URL}/lego/mocs/${setNum}/parts/?page_size=1000`;
     let page = 0;
     while (nextUrl && page < 5) {
-        const res = await fetch(nextUrl, { headers: rbHeaders });
+        const res: Response = await fetch(nextUrl, { headers: rbHeaders });
         if (!res.ok) return [];
-        const data = await res.json();
+        const data: { results: InventoryPart[]; next: string | null } = await res.json();
         parts   = [...parts, ...data.results];
         nextUrl = data.next ?? null;
         page++;

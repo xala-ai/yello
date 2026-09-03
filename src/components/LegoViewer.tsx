@@ -53,7 +53,7 @@ export function LegoViewer({ fileUrl, onClose }: { fileUrl: string; onClose: () 
                   <color attach="background" args={['#1a1a1a']} />
                   <fog attach="fog" args={['#1a1a1a', 50, 300]} />
 
-                  <Stage environment="city" intensity={0.6} contactShadow={{ opacity: 0.5, blur: 2 }}>
+                  <Stage environment="city" intensity={0.6}>
                       <Center>
                           <LegoModel url={fileUrl} />
                       </Center>

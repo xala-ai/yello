@@ -1,68 +1,58 @@
-# BrickMixer System Architecture
+# YelloBricks System Architecture
 
 ## Overview
-BrickMixer is a Next.js 15+ (React 19) application that helps Lego enthusiasts find alternative builds (MOCs) using their existing Lego sets. It uses the Rebrickable API for data but adds significant "Smart" logic on top to enable multi-set mixing, semantic search, and buildability analysis.
+YelloBricks (`yellobricks.xala.ai`) is a Next.js app that turns owned LEGO sets into:
+1. **Smart Mix** recommendations (official sets you can almost build)
+2. **Cross Mix** combinations of owned sets
+3. **AI Builds** — novel builds from your inventory with step instructions
 
-## Tech Stack
-- **Framework:** Next.js 15 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS
-- **State Management:** Zustand (Persistent Local Storage + Hydration)
-- **API Handling:** Server Actions (Proxying Rebrickable API)
+Deployed on **Netlify** (Next.js runtime). Source: `xala-ai/yello`.
 
-## Core Modules
+## Stack
+- Next.js 16 (App Router) + React 19 + TypeScript + Tailwind 4
+- Zustand (local garage) + optional cloud sync when signed in
+- Auth.js (`next-auth@beta`): Google OAuth, email/password, kid 2-word passphrase
+- Rebrickable API for set/inventory data
+- OpenRouter for naming/enrichment (default `anthropic/claude-opus-4.6`)
+- `@react-three/fiber` instruction viewer for AI builds
 
-### 1. Garage Store (`src/store/garage.ts`)
-The central brain of the client-side app.
-- **State:**
-  - `sets`: List of user-owned sets.
-  - `selectedSetIds`: ID list of sets currently active for mixing.
-  - `setInventories`: Cache of part lists (SetNum -> InventoryPart[]).
-  - `smartMatches`: Results of the mixing engine.
-- **Key Actions:**
-  - `findSmartBuilds(query?)`: The main orchestration function that triggers the candidate search and matching logic.
+## Matching tiers
+| Tier | Meaning |
+|------|---------|
+| T1 | Exact part + exact color |
+| T2 | Exact part, any color |
+| T3 | Structural substitution (e.g. 2×6 ← two 2×3) with rigidity penalty |
 
-### 2. Smart Mix Engine (`src/store/garage.ts` + `src/app/actions.ts`)
-How we find what you can build:
-1.  **Aggregation:** Sums up all parts from `selectedSetIds` into a `MasterBin`.
-2.  **Candidate Discovery (Server-Side):**
-    - **Strategy A (Theme):** Finds popular MOCs in the same themes as your sets.
-    - **Strategy B (Combination):** Finds MOCs tagged "Combination" (if multiple sets selected).
-    - **Strategy C (Alternate):** Finds MOCs tagged "Alternate".
-    - **Strategy D (Semantic):** If user types "Forklift", searches MOCs for that specific keyword.
-3.  **Buildability Check (Client-Side):**
-    - Downloads inventory for top ~20 candidates.
-    - Compares Candidate Parts vs. Master Bin.
-    - Calculates Match % (Exact + Smart Color Swaps).
+Composite score blends **fidelity** and **rigidity** via `fidelityWeight` (auto from age).
 
-### 3. Inventory Logic (`src/lib/inventory.ts`)
-- **`aggregateInventory`**: Merges multiple set inventories into one map.
-- **`checkBuildability`**:
-    - **Exact Match:** Same Part ID + Same Color ID.
-    - **Color Swap:** Same Part ID + Different Color (counted separately).
-    - Returns: `% Match`, `Missing Parts List`, `Color Swap List`.
+## Key modules
+| Path | Role |
+|------|------|
+| `src/lib/inventory.ts` | Aggregate + tiered buildability + novelty |
+| `src/lib/structural.ts` | Geometry + substitution rules |
+| `src/lib/planner.ts` | Inventory-constrained local build planner |
+| `src/lib/crossmix.ts` | 2–3 set combination discovery |
+| `src/lib/auth.ts` / `user-store.ts` | Auth + `.data/users.json` persistence |
+| `src/app/actions.ts` | Rebrickable + hybrid AI generate |
+| `src/components/InstructionViewer.tsx` | Step-by-step 3D instructions |
 
-### 4. The "Brain" (`src/lib/brain.ts`) - *In Progress*
-- **Purpose:** Semantic mapping and set analysis.
-- **`mapQueryToTags(query)`**: Converts "Race Car" -> `['vehicle', 'car', 'technic']`.
-- **`analyzeSet(set, inventory)`**: (Planned) Analyzes a set to determine its "DNA" (e.g., "This is 40% Technic").
+## Env (Netlify / local)
+```
+REBRICKABLE_API_KEY=
+OPENROUTER_API_KEY=          # project key (see agent-secrets/yellobricks.env)
+AI_BUILD_MODEL=anthropic/claude-opus-4.6
+AUTH_SECRET=
+NEXTAUTH_URL=https://yellobricks.xala.ai
+GOOGLE_CLIENT_ID=            # optional
+GOOGLE_CLIENT_SECRET=        # optional
+PREBETA_APPS_SCRIPT_WEBHOOK_URL=
+NEXT_PUBLIC_PREBETA_GATE_DISABLED=false
+```
 
-### 5. UI Components
-- **`SetList`**: Interactive grid of owned sets with selection toggles.
-- **`ImportZone`**: Drag-and-drop CSV importer (Brickset/BrickLink support).
-- **`ResultsPage`**:
-    - **SuggestionBar**: "I want to build..." input.
-    - **SmartMocCard**: Displays MOC with Match % Badge and "Missing Parts" accordion.
-    - **Filters**: Min Match %, Sort by Parts/Match.
+## Auth notes
+- Adults: email+password or Google
+- Kids: `word.word` (each word exactly 5 letters); no typed password
+- Garage sync: Save/Load on home when signed in (server `.data/` — for durable prod, swap to Postgres/Blobs)
 
-## Data Flow Diagram
-1.  **User Input** -> Adds Set / Imports CSV.
-2.  **System** -> Fetches Set Details & Inventory -> Caches in Store.
-3.  **User Action** -> Selects Sets -> Clicks "Generate Ideas" (or types query).
-4.  **Engine** -> Aggregates Master Bin -> Searches Rebrickable for Candidates -> Downloads Candidate Inventories -> Compares Parts.
-5.  **Output** -> List of MOCs with "95% Match" badges.
-
-## Future Roadmap (The "Killer Features")
-1.  **Knowledge Base Brain:** Persistent database of set patterns and subassemblies.
-2.  **3D Instruction Viewer:** WebGL-based LDraw viewer for interactive steps.
-3.  **Subassembly Analyzer:** detecting common mechanisms (e.g., "This chassis is used in 5 models").
+## Data flow
+Garage → master bin → Smart Mix / Cross Mix / AI planner → scores + instructions
