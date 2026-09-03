@@ -1,12 +1,11 @@
 [build]
   command = "npm run build"
+  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
 
-# Do not pin [[plugins]] @netlify/plugin-nextjs — that forces the legacy
-# Next runtime. Netlify applies the OpenNext adapter automatically.
-# Do not set publish = ".next"; the adapter owns deploy output.
+# Do not add [[plugins]] @netlify/plugin-nextjs — that pins the legacy runtime.
 
 # Site env (Netlify UI / API):
 # REBRICKABLE_API_KEY, OPENROUTER_API_KEY, AI_BUILD_MODEL,

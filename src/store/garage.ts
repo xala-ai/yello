@@ -325,6 +325,22 @@ export const useGarageStore = create<GarageState>()(
         {
             name: 'yellobricks-garage-v2',
             skipHydration: true,
+            partialize: (s) => ({
+                sets: s.sets,
+                selectedSetIds: s.selectedSetIds,
+                setInventories: s.setInventories,
+                age: s.age,
+                fidelityWeight: s.fidelityWeight,
+                aiMode: s.aiMode,
+                aiPrompt: s.aiPrompt,
+            }),
+            onRehydrateStorage: () => (state) => {
+                if (state) {
+                    state.error = null;
+                    state.isLoading = false;
+                    state.isAILoading = false;
+                }
+            },
         }
     )
 );
